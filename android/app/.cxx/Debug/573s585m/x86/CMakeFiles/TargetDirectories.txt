@@ -1,0 +1,2 @@
+C:/Users/LENOVO/Downloads/pfefront-master/pfefront-master/android/app/.cxx/Debug/573s585m/x86/CMakeFiles/edit_cache.dir
+C:/Users/LENOVO/Downloads/pfefront-master/pfefront-master/android/app/.cxx/Debug/573s585m/x86/CMakeFiles/rebuild_cache.dir
