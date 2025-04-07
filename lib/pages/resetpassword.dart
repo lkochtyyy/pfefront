@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
-
-void main() {
-  runApp(const ResetPasswordApp());
-}
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../blocs/resetpass/reset_password_bloc.dart';
+import '../blocs/resetpass/reset_password_event.dart';
+import '../blocs/resetpass/reset_password_state.dart';
 
 class ResetPasswordApp extends StatelessWidget {
-  const ResetPasswordApp({super.key});
+  final String email; 
+
+  final String receivedcode; // Assuming this is the code you received
+  const ResetPasswordApp({super.key, required this.email, required this.receivedcode});
 
   @override
   Widget build(BuildContext context) {
@@ -14,37 +17,56 @@ class ResetPasswordApp extends StatelessWidget {
       theme: ThemeData(
         scaffoldBackgroundColor: const Color(0xFFF0F4F3), // Matching background color
       ),
-      home: const ResetPasswordPage(),
+      home: ResetPasswordPage(email: email, receivedcode: receivedcode), // Pass email and code to the page
     );
   }
 }
 
 class ResetPasswordPage extends StatefulWidget {
-  const ResetPasswordPage({super.key});
+  final String email;
+  final String receivedcode; 
+  const ResetPasswordPage({super.key, required this.email, required this.receivedcode});
 
   @override
   _ResetPasswordPageState createState() => _ResetPasswordPageState();
 }
 
 class _ResetPasswordPageState extends State<ResetPasswordPage> {
-  final TextEditingController _verificationCodeController =
-      TextEditingController();
+  final TextEditingController _verificationCodeController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _confirmPasswordController =
-      TextEditingController();
+  final TextEditingController _confirmPasswordController = TextEditingController();
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
 
   final FocusNode _verificationFocus = FocusNode();
   final FocusNode _passwordFocus = FocusNode();
   final FocusNode _confirmPasswordFocus = FocusNode();
 
+
+   @override
+  void initState() {
+    super.initState();
+    print(widget.receivedcode); // Affichage correct du code reçu
+  }
+
+
   void _resetPassword() {
     if (_formKey.currentState!.validate()) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Mot de passe réinitialisé")),
+      // Trigger the BLoC event to update the password
+      context.read<ResetPasswordBloc>().add(
+        UpdatePasswordEvent( 
+          email: widget.email, // Access email correctly
+          receivedcode:int.parse(widget.receivedcode), // Convert to int
+          verificationCode:(_verificationCodeController.text.trim()),
+
+
+          
+          newPassword: _passwordController.text.trim(),
+        
+        ),
       );
     }
   }
+
 
   @override
   void dispose() {
@@ -107,19 +129,33 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                     ),
                     const SizedBox(height: 8),
                     const SizedBox(height: 24),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 50,
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF50C2C9), // Sky blue
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(25),
+                    BlocListener<ResetPasswordBloc, ResetPasswordState>(
+                      listener: (context, state) {
+                        if (state is ResetPasswordSuccess) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text("Mot de passe réinitialisé")),
+                          );
+                          // Navigate to another screen, or show a success message.
+                        } else if (state is ResetPasswordFailure) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text(state.error)),
+                          );
+                        }
+                      },
+                      child: SizedBox(
+                        width: double.infinity,
+                        height: 50,
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF50C2C9), // Sky blue
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(25),
+                            ),
                           ),
+                          onPressed: _resetPassword,
+                          child: const Text("Réinitialiser",
+                              style: TextStyle(fontSize: 16, color: Colors.white)),
                         ),
-                        onPressed: _resetPassword,
-                        child: const Text("Réinitialiser",
-                            style: TextStyle(fontSize: 16, color: Colors.white)),
                       ),
                     ),
                   ],
@@ -190,18 +226,17 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
               _resetPassword();
             }
           },
-          validator: validator ??
-              (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Ce champ est requis';
-                }
-                if (isPassword &&
-                    controller == _confirmPasswordController &&
-                    value != _passwordController.text) {
-                  return 'Les mots de passe ne correspondent pas';
-                }
-                return null;
-              },
+          validator: validator ?? (value) {
+            if (value == null || value.isEmpty) {
+              return 'Ce champ est requis';
+            }
+            if (isPassword &&
+                controller == _confirmPasswordController &&
+                value != _passwordController.text) {
+              return 'Les mots de passe ne correspondent pas';
+            }
+            return null;
+          },
         ),
       ),
     );

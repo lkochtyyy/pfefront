@@ -41,4 +41,10 @@ Future<Map<String, dynamic>> login(String email, String password) async {
   }
 }
 
+  requestPasswordReset(String email) {}
+
+  verifyResetCode(String code) {}
+
+  updatePassword(String newPassword) {}
+
 }
