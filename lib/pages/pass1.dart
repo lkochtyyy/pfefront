@@ -1,48 +1,9 @@
 import 'package:flutter/material.dart';
-import 'welcome.dart'; // Import the WelcomeScreen
+import 'package:google_fonts/google_fonts.dart';
+import 'package:pfefront/pages/welcome.dart';
 
 void main() {
   runApp(const MyApp());
-}
-
-class OnboardingPage extends StatelessWidget {
-  final String title;
-  final String description;
-  final String image;
-
-  const OnboardingPage({
-    super.key,
-    required this.title,
-    required this.description,
-    required this.image,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Image.asset(image, height: 350),
-        const SizedBox(height: 20),
-        Text(
-          title,
-          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: const Color(0xFF50C2C9), // Theme color
-              ),
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: 10),
-        Text(
-          description,
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Colors.grey,
-              ),
-          textAlign: TextAlign.center,
-        ),
-      ],
-    );
-  }
 }
 
 class MyApp extends StatelessWidget {
@@ -54,12 +15,9 @@ class MyApp extends StatelessWidget {
       title: 'Car Onboarding',
       theme: ThemeData(
         primarySwatch: Colors.blue,
-        fontFamily: 'Roboto',
+        textTheme:
+            GoogleFonts.poppinsTextTheme(), // Applique Poppins globalement
         visualDensity: VisualDensity.adaptivePlatformDensity,
-        textTheme: const TextTheme(
-          headlineSmall: TextStyle(fontSize: 24),
-          bodyMedium: TextStyle(fontSize: 16),
-        ),
       ),
       home: const OnboardingScreen(),
     );
@@ -101,7 +59,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   void _nextPage() {
     if (_currentPage < _onboardingData.length - 1) {
       _pageController.nextPage(
-        duration: const Duration(milliseconds: 300),
+        duration: const Duration(milliseconds: 500),
         curve: Curves.easeInOut,
       );
     }
@@ -110,7 +68,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   void _prevPage() {
     if (_currentPage > 0) {
       _pageController.previousPage(
-        duration: const Duration(milliseconds: 300),
+        duration: const Duration(milliseconds: 500),
         curve: Curves.easeInOut,
       );
     }
@@ -126,9 +84,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF0F4F3), // Updated theme background
+      backgroundColor: const Color(0xFFF0F4F3),
       body: Stack(
         children: [
+          _buildAnimatedBackground(),
           PageView.builder(
             controller: _pageController,
             itemCount: _onboardingData.length,
@@ -141,15 +100,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               );
             },
           ),
-
           Positioned(
             top: MediaQuery.of(context).padding.top + 20,
             right: 20,
             child: TextButton(
               onPressed: _goToWelcome,
-              child: const Text(
+              child: Text(
                 "Passer",
-                style: TextStyle(
+                style: GoogleFonts.poppins(
                   color: Colors.black,
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
@@ -157,7 +115,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               ),
             ),
           ),
-
           Positioned(
             bottom: 50,
             left: 20,
@@ -168,36 +125,33 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 if (_currentPage > 0)
                   TextButton(
                     onPressed: _prevPage,
-                    child: const Text(
+                    child: Text(
                       "Précédent",
-                      style: TextStyle(
+                      style: GoogleFonts.poppins(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
                         color: Colors.grey,
                       ),
                     ),
                   ),
-                if (_currentPage == 0) const SizedBox(width: 60),
-
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: List.generate(
                     _onboardingData.length,
                     (index) => AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
+                      duration: const Duration(milliseconds: 500),
                       margin: const EdgeInsets.symmetric(horizontal: 4),
                       width: _currentPage == index ? 24 : 8,
                       height: 8,
                       decoration: BoxDecoration(
                         color: _currentPage == index
-                            ? const Color(0xFF50C2C9) // Updated theme color
+                            ? const Color(0xFF50C2C9)
                             : Colors.grey,
                         borderRadius: BorderRadius.circular(4),
                       ),
                     ),
                   ),
                 ),
-
                 TextButton(
                   onPressed: _currentPage == _onboardingData.length - 1
                       ? _goToWelcome
@@ -206,10 +160,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     _currentPage == _onboardingData.length - 1
                         ? "Démarrer"
                         : "Suivant",
-                    style: const TextStyle(
+                    style: GoogleFonts.poppins(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFF50C2C9), // Updated theme color
+                      color: const Color(0xFF50C2C9),
                     ),
                   ),
                 ),
@@ -218,6 +172,78 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildAnimatedBackground() {
+    return AnimatedContainer(
+      duration: const Duration(seconds: 10),
+      curve: Curves.easeInOut,
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            Color(0xFF50C2C9),
+            Color.fromARGB(255, 235, 237, 243),
+            Color(0xFFE1F5F7),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+    );
+  }
+}
+
+class OnboardingPage extends StatelessWidget {
+  final String title;
+  final String description;
+  final String image;
+
+  const OnboardingPage({
+    super.key,
+    required this.title,
+    required this.description,
+    required this.image,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        AnimatedOpacity(
+          duration: const Duration(seconds: 1),
+          opacity: 1.0,
+          child: Image.asset(image, height: 350),
+        ),
+        const SizedBox(height: 20),
+        AnimatedSlide(
+          duration: const Duration(milliseconds: 800),
+          offset: const Offset(0, 0),
+          child: Text(
+            title,
+            style: GoogleFonts.poppins(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: const Color(0xFF50C2C9),
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ),
+        const SizedBox(height: 10),
+        AnimatedOpacity(
+          duration: const Duration(milliseconds: 500),
+          opacity: 1.0,
+          child: Text(
+            description,
+            style: GoogleFonts.poppins(
+              fontSize: 16,
+              color: Colors.grey,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ),
+      ],
     );
   }
 }

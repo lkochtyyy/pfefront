@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:lottie/lottie.dart';
 import 'package:pfefront/blocs/resetpass/reset_password_event.dart';
 import '../blocs/resetpass/reset_password_bloc.dart';
 import '../blocs/resetpass/reset_password_state.dart';
@@ -36,52 +38,61 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     return RegExp(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$").hasMatch(email);
   }
 
+  // Nouveau background animé
+  Widget _buildAnimatedBackground() {
+    return AnimatedContainer(
+      duration: const Duration(seconds: 10),
+      curve: Curves.easeInOut,
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            Color(0xFF50C2C9), // Bleu clair
+            Color.fromARGB(255, 235, 237, 243), // Bleu foncé
+            Color(0xFFE1F5F7), // Bleu pastel
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
+
     return Scaffold(
       backgroundColor: const Color(0xFFF0F4F3),
       body: Stack(
         children: [
-          Positioned(
-            top: -size.height * 0.05,
-            left: -size.width * 0.05,
-            child: Opacity(
-              opacity: 0.7,
-              child: Image.asset(
-                'assets/shape.png',
-                width: size.width * 0.6,
-                fit: BoxFit.cover,
-              ),
-            ),
-          ),
+          _buildAnimatedBackground(), // Ajout du dégradé animé
           Center(
             child: SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 24.0),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const SizedBox(height: 20),
-                  Image.asset(
-                    'assets/chorliya.png',
-                    width: 250,
-                    height: 250,
+                  const SizedBox(height: 60),
+                  Lottie.asset(
+                    'assets/json/forgot.json',
+                    width: 300,
+                    height: 300,
                     fit: BoxFit.contain,
                   ),
-                  const SizedBox(height: 10),
-                  const Text(
+                  const SizedBox(height: 20),
+                  Text(
                     "Mot de passe oublié ?",
-                    style: TextStyle(
+                    style: GoogleFonts.poppins(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFF50C2C9),
+                      color: const Color(0xFF50C2C9),
                     ),
                   ),
                   const SizedBox(height: 10),
-                  const Text(
+                  Text(
                     "Entrez votre adresse e-mail pour réinitialiser votre mot de passe.",
                     textAlign: TextAlign.center,
-                    style: TextStyle(
+                    style: GoogleFonts.poppins(
                       fontSize: 16,
                       color: Colors.black54,
                     ),
@@ -109,7 +120,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                         border: InputBorder.none,
                         contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
                         hintText: 'Entrer votre adresse e-mail',
-                        hintStyle: TextStyle(fontSize: 16, color: Colors.grey.shade600),
+                        hintStyle: GoogleFonts.poppins(fontSize: 16, color: Colors.grey.shade600),
                         prefixIcon: const Icon(Icons.email_outlined, color: Colors.black54),
                         errorText: _emailError,
                       ),
@@ -119,16 +130,13 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                   const SizedBox(height: 30),
                   BlocConsumer<ResetPasswordBloc, ResetPasswordState>(
                     listener: (context, state) {
-                        if (state is ResetPasswordSuccess) {
-                        // Vérifier si le message de succès contient un code de vérification
-                       
-
+                      if (state is ResetPasswordSuccess) {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
                             builder: (context) => ResetPasswordApp(
                               email: _emailController.text.trim(),
-                              receivedcode: state.verificationCode.toString()
+                              receivedcode: state.verificationCode.toString(),
                             ),
                           ),
                         );
@@ -170,9 +178,12 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                                       );
                                 }
                               : null,
-                          child: const Text(
+                          child: Text(
                             'Envoyer',
-                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                            style: GoogleFonts.poppins(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
                       );

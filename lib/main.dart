@@ -3,7 +3,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:pfefront/blocs/resetpass/reset_password_bloc.dart';
 import 'package:pfefront/data/repositories/forgetpass_repository.dart';
+import 'package:pfefront/pages/acceuil.dart';
 import 'package:pfefront/pages/pass1.dart';
+import 'package:pfefront/pages/realacceuil.dart';
 import 'blocs/auth/auth_bloc.dart';
 import 'data/repositories/auth_repository.dart';
 
@@ -39,7 +41,8 @@ class MyApp extends StatelessWidget {
             debugShowCheckedModeBanner: false,
             initialRoute: '/',
             routes: {
-              '/': (context) => const OnboardingScreen(),          
+              '/': (context) => const OnboardingScreen(),
+             
             },
           );
         },

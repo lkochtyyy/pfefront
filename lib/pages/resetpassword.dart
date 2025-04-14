@@ -1,72 +1,66 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:lottie/lottie.dart';
 import '../blocs/resetpass/reset_password_bloc.dart';
 import '../blocs/resetpass/reset_password_event.dart';
 import '../blocs/resetpass/reset_password_state.dart';
 
 class ResetPasswordApp extends StatelessWidget {
-  final String email; 
+  final String email;
+  final String receivedcode;
 
-  final String receivedcode; // Assuming this is the code you received
-  const ResetPasswordApp({super.key, required this.email, required this.receivedcode});
+  const ResetPasswordApp({
+    super.key,
+    required this.email,
+    required this.receivedcode,
+  });
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        scaffoldBackgroundColor: const Color(0xFFF0F4F3), // Matching background color
+        scaffoldBackgroundColor: const Color(0xFFF0F4F3),
+        textTheme: GoogleFonts.poppinsTextTheme(),
       ),
-      home: ResetPasswordPage(email: email, receivedcode: receivedcode), // Pass email and code to the page
+      home: ResetPasswordPage(
+        email: email,
+        receivedcode: receivedcode,
+      ),
     );
   }
 }
 
 class ResetPasswordPage extends StatefulWidget {
   final String email;
-  final String receivedcode; 
-  const ResetPasswordPage({super.key, required this.email, required this.receivedcode});
+  final String receivedcode;
+
+  const ResetPasswordPage({
+    super.key,
+    required this.email,
+    required this.receivedcode,
+  });
 
   @override
-  _ResetPasswordPageState createState() => _ResetPasswordPageState();
+  State<ResetPasswordPage> createState() => _ResetPasswordPageState();
 }
 
 class _ResetPasswordPageState extends State<ResetPasswordPage> {
-  final TextEditingController _verificationCodeController = TextEditingController();
-  final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _confirmPasswordController = TextEditingController();
-  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+  final _formKey = GlobalKey<FormState>();
+  final _verificationCodeController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
 
   final FocusNode _verificationFocus = FocusNode();
   final FocusNode _passwordFocus = FocusNode();
   final FocusNode _confirmPasswordFocus = FocusNode();
 
+  double _scale = 1.0;
 
-   @override
-  void initState() {
-    super.initState();
-    print(widget.receivedcode); // Affichage correct du code reçu
-  }
-
-
-  void _resetPassword() {
-    if (_formKey.currentState!.validate()) {
-      // Trigger the BLoC event to update the password
-      context.read<ResetPasswordBloc>().add(
-        UpdatePasswordEvent( 
-          email: widget.email, // Access email correctly
-          receivedcode:int.parse(widget.receivedcode), // Convert to int
-          verificationCode:(_verificationCodeController.text.trim()),
-
-
-          
-          newPassword: _passwordController.text.trim(),
-        
-        ),
-      );
-    }
-  }
-
+  void _onTapDown(_) => setState(() => _scale = 0.95);
+  void _onTapUp(_) => setState(() => _scale = 1.0);
+  void _onTapCancel() => setState(() => _scale = 1.0);
 
   @override
   void dispose() {
@@ -79,35 +73,35 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
     super.dispose();
   }
 
+  void _resetPassword() {
+    if (_formKey.currentState!.validate()) {
+      context.read<ResetPasswordBloc>().add(
+            UpdatePasswordEvent(
+              email: widget.email,
+              receivedcode: int.parse(widget.receivedcode),
+              verificationCode: _verificationCodeController.text.trim(),
+              newPassword: _passwordController.text.trim(),
+            ),
+          );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.of(context).size;
     return Scaffold(
       body: Stack(
         children: [
-          Positioned(
-            top: -size.height * 0.05,
-            left: -size.width * 0.05,
-            child: Opacity(
-              opacity: 0.7,
-              child: Image.asset(
-                'assets/shape.png',
-                width: size.width * 0.6,
-                fit: BoxFit.cover,
-              ),
-            ),
-          ),
+          _buildAnimatedBackground(),
           Center(
             child: SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Form(
                 key: _formKey,
                 child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const SizedBox(height: 100),
-                    Image.asset('assets/chorliya.png', height: 300),
-                    const SizedBox(height: 100),
+                    const SizedBox(height: 80),
+                    Lottie.asset('assets/json/reset.json', height: 230),
+                    const SizedBox(height: 40),
                     _buildTextField(
                       "Code de vérification",
                       _verificationCodeController,
@@ -127,37 +121,63 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                       _confirmPasswordFocus,
                       isPassword: true,
                     ),
-                    const SizedBox(height: 8),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 30),
                     BlocListener<ResetPasswordBloc, ResetPasswordState>(
                       listener: (context, state) {
                         if (state is ResetPasswordSuccess) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text("Mot de passe réinitialisé")),
+                            const SnackBar(
+                              content: Row(
+                                children: [
+                                  Icon(Icons.check_circle, color: Colors.teal),
+                                  SizedBox(width: 8),
+                                  Text("Mot de passe réinitialisé avec succès !"),
+                                ],
+                              ),
+                            ),
                           );
-                          // Navigate to another screen, or show a success message.
                         } else if (state is ResetPasswordFailure) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(content: Text(state.error)),
                           );
                         }
                       },
-                      child: SizedBox(
-                        width: double.infinity,
-                        height: 50,
-                        child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF50C2C9), // Sky blue
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(25),
+                      child: AnimatedScale(
+                        scale: _scale,
+                        duration: const Duration(milliseconds: 120),
+                        child: GestureDetector(
+                          onTapDown: _onTapDown,
+                          onTapUp: _onTapUp,
+                          onTapCancel: _onTapCancel,
+                          onTap: _resetPassword,
+                          child: Container(
+                            height: 55,
+                            width: double.infinity,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF50C2C9),
+                              borderRadius: BorderRadius.circular(30),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.2),
+                                  blurRadius: 12,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            alignment: Alignment.center,
+                            child: Text(
+                              "Réinitialiser",
+                              style: GoogleFonts.poppins(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
                             ),
                           ),
-                          onPressed: _resetPassword,
-                          child: const Text("Réinitialiser",
-                              style: TextStyle(fontSize: 16, color: Colors.white)),
                         ),
                       ),
                     ),
+                    const SizedBox(height: 30),
                   ],
                 ),
               ),
@@ -168,32 +188,53 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
     );
   }
 
+  Widget _buildAnimatedBackground() {
+    return AnimatedContainer(
+      duration: const Duration(seconds: 10),
+      curve: Curves.easeInOut,
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            Color(0xFF50C2C9),
+            Color.fromARGB(255, 235, 237, 243),
+            Color(0xFFE1F5F7),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+    );
+  }
+
   Widget _buildTextField(
-      String labelText, TextEditingController controller, FocusNode focusNode,
-      {bool isPassword = false,
-      FocusNode? nextFocusNode,
-      String? Function(String?)? validator}) {
+    String label,
+    TextEditingController controller,
+    FocusNode focusNode, {
+    bool isPassword = false,
+    FocusNode? nextFocusNode,
+  }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(15),
           boxShadow: focusNode.hasFocus
               ? [
-                  const BoxShadow(
-                    color: Colors.black26,
-                    blurRadius: 15, // Ombre plus large
-                    spreadRadius: 3, // Ombre un peu plus étendue
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.3),
+                    blurRadius: 12,
+                    spreadRadius: 2,
+                    offset: const Offset(0, 4),
                   ),
                 ]
               : [
-                  const BoxShadow(
-                    color: Colors.black12,
-                    blurRadius: 5, // Ombre moins prononcée lorsque le focus est absent
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 6,
                     spreadRadius: 1,
+                    offset: const Offset(0, 3),
                   ),
                 ],
         ),
@@ -201,24 +242,8 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
           controller: controller,
           focusNode: focusNode,
           obscureText: isPassword,
-          decoration: InputDecoration(
-            filled: true,
-            fillColor: Colors.white,
-            hintText: labelText,
-            prefixIcon: Icon(
-              isPassword ? Icons.lock : Icons.verified_user,
-              color: Colors.grey,
-            ),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(15),
-              borderSide: BorderSide.none,
-            ),
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-          ),
-          textInputAction: nextFocusNode != null
-              ? TextInputAction.next
-              : TextInputAction.done,
+          textInputAction:
+              nextFocusNode != null ? TextInputAction.next : TextInputAction.done,
           onEditingComplete: () {
             if (nextFocusNode != null) {
               FocusScope.of(context).requestFocus(nextFocusNode);
@@ -226,7 +251,22 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
               _resetPassword();
             }
           },
-          validator: validator ?? (value) {
+          decoration: InputDecoration(
+            hintText: label,
+            prefixIcon: Icon(
+              isPassword ? Icons.lock_outline : Icons.verified_user_outlined,
+              color: Colors.grey,
+            ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(15),
+              borderSide: BorderSide.none,
+            ),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+            filled: true,
+            fillColor: Colors.white,
+          ),
+          validator: (value) {
             if (value == null || value.isEmpty) {
               return 'Ce champ est requis';
             }
