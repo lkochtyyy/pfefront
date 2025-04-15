@@ -3,6 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lottie/lottie.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:pfefront/blocs/announcement/car_announcement_bloc.dart';
+import 'package:pfefront/data/models/announcement_model.dart';
+
+// If the Announcement class is not defined in the imported file, define it here or ensure the correct file is imported.
 
 class PublierAnnoncePage extends StatefulWidget {
   const PublierAnnoncePage({super.key});
@@ -13,13 +18,12 @@ class PublierAnnoncePage extends StatefulWidget {
 
 class _CreateEditCarPageState extends State<PublierAnnoncePage> {
   final _formKey = GlobalKey<FormState>();
-  String? selectedCondition;
+  String? selectedCondition = 'Nouveau'; // Valeur par défaut
   String? selectedBrand;
   String? selectedModel;
   String? selectedFuel;
   String? selectedTransmission;
   List<String> selectedFeatures = [];
-  bool isLoading = false;
 
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _yearController = TextEditingController();
@@ -93,179 +97,134 @@ class _CreateEditCarPageState extends State<PublierAnnoncePage> {
     );
   }
 
+  void _submitForm() {
+    if (_formKey.currentState!.validate()) {
+      if (selectedBrand == null ||
+          selectedModel == null ||
+          selectedFuel == null ||
+          selectedTransmission == null ||
+          selectedImage == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Veuillez remplir tous les champs obligatoires.')),
+        );
+        return;
+      }
+
+      try {
+        final year = int.parse(_yearController.text);
+        final mileage = int.parse(_kilometersController.text);
+        final price = double.parse(_priceController.text);
+
+        // Créer l'objet CarAnnouncement avec les données du formulaire
+        final announcement = CarAnnouncement(
+          title: _titleController.text,
+          carCondition: selectedCondition!,
+          year: year,
+          brand: selectedBrand!,
+          model: selectedModel!,
+          fuelType: selectedFuel!,
+          mileage: mileage,
+          options: selectedFeatures,
+          location: _locationController.text,
+          price: price,
+          description: _descriptionController.text,
+          imageFile: selectedImage!,
+          imageUrl: '', // Provide a valid URL or placeholder string
+          vendorId: 1, // À remplacer par l'ID du vendeur connecté
+        );
+
+        // Envoyer l'événement au Bloc
+        context.read<CarAnnouncementBloc>().add(
+              CreateAnnouncement(
+                announcement: announcement, imageFile: selectedImage!,
+              ),
+            );
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Veuillez entrer des valeurs valides.')),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              Color(0xFF50C2C9),
-              Color.fromARGB(255, 235, 237, 243),
-              Color(0xFFE1F5F7),
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-        ),
-        child: SafeArea(
-          child: Form(
-            key: _formKey,
-            child: SingleChildScrollView(
+    return BlocListener<CarAnnouncementBloc, CarAnnouncementState>(
+      listener: (context, state) {
+        if (state is AnnouncementCreated) {
+          showModalBottomSheet(
+            context: context,
+            shape: const RoundedRectangleBorder(
+              borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+            ),
+            builder: (_) => Padding(
               padding: const EdgeInsets.all(20),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Row(
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.arrow_back),
-                        onPressed: () => Navigator.pop(context),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Créer / Modifier Voiture',
-                        style: GoogleFonts.poppins(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-                  _buildTextField(
-                    'Titre',
-                    _titleController,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black12,
-                        blurRadius: 10,
-                        offset: Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildRadioGroup(
-                            'Condition', ['Nouveau', 'Ancienne']),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _buildTextField('Année', _yearController,
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black12,
-                                blurRadius: 10,
-                                offset: Offset(0, 4),
-                              ),
-                            ],
-                            type: TextInputType.number),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildDropdown(
-                            'Marque',
-                            ['BMW', 'Mercedes', 'Audi'],
-                            
-                            (val) => selectedBrand = val),
-                            
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _buildDropdown(
-                            'Modèle',
-                            ['Série 3', 'A4', 'Classe C'],
-                            (val) => selectedModel = val),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildDropdown('Carburant', fuelTypes,
-                            (val) => selectedFuel = val),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _buildDropdown('Boîte', transmissions,
-                            (val) => selectedTransmission = val),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  _buildTextField('Kilométrage', _kilometersController,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black12,
-                          blurRadius: 10,
-                          offset: Offset(0, 4),
-                        ),
-                      ],
-                      type: TextInputType.number),
+                  Lottie.asset('assets/json/pub.json', height: 120),
                   const SizedBox(height: 12),
                   Text(
-                    'Options',
+                    'Voiture ajoutée avec succès !',
                     style: GoogleFonts.poppins(
-                        fontSize: 16, fontWeight: FontWeight.w600),
+                        fontSize: 18, fontWeight: FontWeight.w600),
                   ),
-                  Wrap(
-                    spacing: 10,
-                    runSpacing: 6,
-                    children: allFeatures
-                        .map(
-                          (feature) => FilterChip(
-                            label: Text(feature),
-                            selected: selectedFeatures.contains(feature),
-                            onSelected: (isSelected) {
-                              setState(() {
-                                isSelected
-                                    ? selectedFeatures.add(feature)
-                                    : selectedFeatures.remove(feature);
-                              });
-                            },
-                          ),
-                        )
-                        .toList(),
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildTextField(
-                          'Lieu',
-                          _locationController,
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black12,
-                              blurRadius: 10,
-                              offset: Offset(0, 4),
-                            ),
-                          ],
+                ],
+              ),
+            ),
+          );
+
+          Future.delayed(const Duration(seconds: 2), () {
+            Navigator.pop(context); // Fermer le bottom sheet
+            Navigator.pop(context); // Revenir à l'écran précédent
+          });
+        } else if (state is CarAnnouncementError) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(state.toString())),
+          );
+        }
+      },
+      child: Scaffold(
+        body: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                Color(0xFF50C2C9),
+                Color.fromARGB(255, 235, 237, 243),
+                Color(0xFFE1F5F7),
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+          child: SafeArea(
+            child: Form(
+              key: _formKey,
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.arrow_back),
+                          onPressed: () => Navigator.pop(context),
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _buildTextField('Prix', _priceController,
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black12,
-                                blurRadius: 10,
-                                offset: Offset(0, 4),
-                              ),
-                            ],
-                            type: TextInputType.number),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  _buildTextField('Description', _descriptionController,
+                        const SizedBox(width: 8),
+                        Text(
+                          'Créer / Modifier Voiture',
+                          style: GoogleFonts.poppins(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    _buildTextField(
+                      'Titre',
+                      _titleController,
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black12,
@@ -273,94 +232,195 @@ class _CreateEditCarPageState extends State<PublierAnnoncePage> {
                           offset: Offset(0, 4),
                         ),
                       ],
-                      maxLines: 4),
-                  const SizedBox(height: 20),
-                  GestureDetector(
-                    onTap: _showImagePickerOptions,
-                    child: Center(
-                      child: selectedImage == null
-                          ? Column(
-                              children: [
-                                Lottie.asset('assets/json/add.json',
-                                    height: 180),
-                                const SizedBox(height: 8),
-                                Text(
-                                  'Cliquez ici pour ajouter une image',
-                                  style: GoogleFonts.poppins(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w500,
-                                      color: Colors.grey.shade800),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildRadioGroup(
+                              'Condition', ['Nouveau', 'Ancienne']),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _buildTextField('Année', _yearController,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black12,
+                                  blurRadius: 10,
+                                  offset: Offset(0, 4),
                                 ),
                               ],
-                            )
-                          : ClipRRect(
-                              borderRadius: BorderRadius.circular(30),
-                              child: Image.file(
-                                selectedImage!,
-                                height: 200,
-                                width: double.infinity,
-                                fit: BoxFit.cover,
-                              ),
-                            ),
+                              type: TextInputType.number),
+                        ),
+                      ],
                     ),
-                  ),
-                  const SizedBox(height: 20),
-                  Center(
-                    child: ElevatedButton(
-                      onPressed: () {
-                        if (_formKey.currentState!.validate()) {
-                          setState(() {
-                            isLoading = true;
-                          });
-                          Future.delayed(const Duration(seconds: 2), () {
-                            setState(() {
-                              isLoading = false;
-                            });
-                            showModalBottomSheet(
-                              context: context,
-                              shape: const RoundedRectangleBorder(
-                                borderRadius: BorderRadius.vertical(
-                                    top: Radius.circular(30)),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildDropdown(
+                              'Marque',
+                              ['BMW', 'Mercedes', 'Audi'],
+                              (val) => selectedBrand = val),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _buildDropdown(
+                              'Modèle',
+                              ['Série 3', 'A4', 'Classe C'],
+                              (val) => selectedModel = val),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildDropdown('Carburant', fuelTypes,
+                              (val) => selectedFuel = val),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _buildDropdown('Boîte', transmissions,
+                              (val) => selectedTransmission = val),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    _buildTextField('Kilométrage', _kilometersController,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black12,
+                            blurRadius: 10,
+                            offset: Offset(0, 4),
+                          ),
+                        ],
+                        type: TextInputType.number),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Options',
+                      style: GoogleFonts.poppins(
+                          fontSize: 16, fontWeight: FontWeight.w600),
+                    ),
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 6,
+                      children: allFeatures
+                          .map(
+                            (feature) => FilterChip(
+                              label: Text(feature),
+                              selected: selectedFeatures.contains(feature),
+                              onSelected: (isSelected) {
+                                setState(() {
+                                  isSelected
+                                      ? selectedFeatures.add(feature)
+                                      : selectedFeatures.remove(feature);
+                                });
+                              },
+                            ),
+                          )
+                          .toList(),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildTextField(
+                            'Lieu',
+                            _locationController,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black12,
+                                blurRadius: 10,
+                                offset: Offset(0, 4),
                               ),
-                              builder: (_) => Padding(
-                                padding: const EdgeInsets.all(20),
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Lottie.asset('assets/json/pub.json',
-                                        height: 120),
-                                    const SizedBox(height: 12),
-                                    Text(
-                                      'Voiture ajoutée avec succès !',
-                                      style: GoogleFonts.poppins(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.w600),
-                                    ),
-                                  ],
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _buildTextField('Prix', _priceController,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black12,
+                                  blurRadius: 10,
+                                  offset: Offset(0, 4),
+                                ),
+                              ],
+                              type: TextInputType.number),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    _buildTextField('Description', _descriptionController,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black12,
+                            blurRadius: 10,
+                            offset: Offset(0, 4),
+                          ),
+                        ],
+                        maxLines: 4),
+                    const SizedBox(height: 20),
+                    GestureDetector(
+                      onTap: _showImagePickerOptions,
+                      child: Center(
+                        child: selectedImage == null
+                            ? Column(
+                                children: [
+                                  Lottie.asset('assets/json/add.json',
+                                      height: 180),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    'Cliquez ici pour ajouter une image',
+                                    style: GoogleFonts.poppins(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w500,
+                                        color: Colors.grey.shade800),
+                                  ),
+                                ],
+                              )
+                            : ClipRRect(
+                                borderRadius: BorderRadius.circular(30),
+                                child: Image.file(
+                                  selectedImage!,
+                                  height: 200,
+                                  width: double.infinity,
+                                  fit: BoxFit.cover,
                                 ),
                               ),
-                            );
-                          });
-                        }
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF00C2CB),
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 50, vertical: 16),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(30)),
-                        elevation: 8,
                       ),
-                      child: isLoading
-                          ? const CircularProgressIndicator(color: Colors.white)
-                          : Text(
-                              'Publier ma voiture',
-                              style: GoogleFonts.poppins(fontSize: 16),
-                            ),
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 20),
+                    Center(
+                      child: BlocBuilder<CarAnnouncementBloc, CarAnnouncementState>(
+                        builder: (context, state) {
+                          return ElevatedButton(
+                            onPressed: state is CarAnnouncementLoading
+                                ? null
+                                : _submitForm,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF00C2CB),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 50, vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(30)),
+                              elevation: 8,
+                            ),
+                            child: state is CarAnnouncementLoading
+                                ? const CircularProgressIndicator(
+                                    color: Colors.white)
+                                : Text(
+                                    'Publier ma voiture',
+                                    style: GoogleFonts.poppins(fontSize: 16),
+                                  ),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -374,13 +434,13 @@ class _CreateEditCarPageState extends State<PublierAnnoncePage> {
     TextEditingController controller, {
     int maxLines = 1,
     TextInputType type = TextInputType.text,
-    List<BoxShadow>? boxShadow, // Ajout du paramètre boxShadow
+    List<BoxShadow>? boxShadow,
   }) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(30),
-        boxShadow: boxShadow ?? [], // Applique l'ombre si elle est définie
+        boxShadow: boxShadow ?? [],
       ),
       child: TextFormField(
         controller: controller,
@@ -396,7 +456,7 @@ class _CreateEditCarPageState extends State<PublierAnnoncePage> {
               const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(30),
-            borderSide: BorderSide.none, // Suppression des bordures noires
+            borderSide: BorderSide.none,
           ),
         ),
         validator: (value) =>
@@ -459,6 +519,18 @@ class _CreateEditCarPageState extends State<PublierAnnoncePage> {
               DropdownMenuItem<String>(value: item, child: Text(item)))
           .toList(),
       onChanged: onChanged,
+      validator: (value) => value == null ? 'Ce champ est requis' : null,
     );
+  }
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _yearController.dispose();
+    _locationController.dispose();
+    _priceController.dispose();
+    _descriptionController.dispose();
+    _kilometersController.dispose();
+    super.dispose();
   }
 }
