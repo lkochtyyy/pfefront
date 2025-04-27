@@ -30,3 +30,8 @@ class DeleteAnnouncement extends CarAnnouncementEvent {
   @override
   List<Object> get props => [id];
 }
+class FetchVendorAnnouncement extends CarAnnouncementEvent {
+  final int vendorId;
+
+  FetchVendorAnnouncement(this.vendorId);
+}

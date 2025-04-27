@@ -7,19 +7,20 @@ import 'package:pfefront/data/repositories/announcement_repository.dart';
 part 'car_announcement_event.dart';
 part 'car_announcement_state.dart';
 
-class CarAnnouncementBloc
-    extends Bloc<CarAnnouncementEvent, CarAnnouncementState> {
+class CarAnnouncementBloc extends Bloc<CarAnnouncementEvent, CarAnnouncementState> {
   final CarAnnouncementRepository repository;
 
-  CarAnnouncementBloc({required this.repository})
-      : super(CarAnnouncementInitial()) {
+  CarAnnouncementBloc({required this.repository}) : super(CarAnnouncementInitial()) {
     on<FetchAnnouncements>(_onFetch);
     on<CreateAnnouncement>(_onCreate);
     on<DeleteAnnouncement>(_onDelete);
+    on<FetchVendorAnnouncement>(_onFetchVendor); // 💡 Ajouté proprement ici
   }
 
   Future<void> _onFetch(
-      FetchAnnouncements event, Emitter<CarAnnouncementState> emit) async {
+    FetchAnnouncements event,
+    Emitter<CarAnnouncementState> emit,
+  ) async {
     emit(CarAnnouncementLoading());
     try {
       final announcements = await repository.fetchAll();
@@ -30,26 +31,43 @@ class CarAnnouncementBloc
   }
 
   Future<void> _onCreate(
-      CreateAnnouncement event, Emitter<CarAnnouncementState> emit) async {
+    CreateAnnouncement event,
+    Emitter<CarAnnouncementState> emit,
+  ) async {
     emit(CarAnnouncementLoading());
     try {
-      await repository.create(event.announcement, event.imageFile);
+      await repository.createAnnouncement(event.announcement, event.imageFile);
       emit(AnnouncementCreated());
-      add(FetchAnnouncements());
+      add(FetchAnnouncements()); // 🔄 Refresh après création
     } catch (e) {
       emit(CarAnnouncementError('Failed to create announcement: ${e.toString()}'));
     }
   }
 
   Future<void> _onDelete(
-      DeleteAnnouncement event, Emitter<CarAnnouncementState> emit) async {
+    DeleteAnnouncement event,
+    Emitter<CarAnnouncementState> emit,
+  ) async {
     emit(CarAnnouncementLoading());
     try {
       await repository.deleteAnnouncement(event.id);
       emit(AnnouncementDeleted());
-      add(FetchAnnouncements());
+      add(FetchAnnouncements()); // 🔄 Refresh après suppression
     } catch (e) {
       emit(CarAnnouncementError(e.toString()));
     }
   }
+
+  Future<void> _onFetchVendor(
+  FetchVendorAnnouncement event,
+  Emitter<CarAnnouncementState> emit,
+) async {
+  emit(VendorAnnouncementsLoading());
+  try {
+    final annonces = await repository.fetchByVendor(event.vendorId);
+    emit(VendorAnnouncementsLoaded(annonces)); // Use the list directly
+  } catch (e) {
+    emit(VendorAnnouncementsError(e.toString()));
+  }
+}
 }

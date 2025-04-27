@@ -9,7 +9,7 @@ class CarAnnouncement {
   final String model;
   final String fuelType;
   final int mileage;
-  final List<String> options;
+  final String options;
   final String location;
   final double price;
   final String description;
@@ -36,22 +36,33 @@ class CarAnnouncement {
   });
 
   factory CarAnnouncement.fromJson(Map<String, dynamic> json) {
+    // Handle price as num or String
+    final rawPrice = json['price'];
+    double parsedPrice;
+    if (rawPrice is num) {
+      parsedPrice = rawPrice.toDouble();
+    } else if (rawPrice is String) {
+      parsedPrice = double.tryParse(rawPrice) ?? 0.0;
+    } else {
+      parsedPrice = 0.0;
+    }
+
     return CarAnnouncement(
-      id: json['id'],
-      title: json['title'],
-      carCondition: json['car_condition'],
-      year: json['year'],
-      brand: json['brand'],
-      model: json['model'],
-      fuelType: json['fuel_type'],
-      mileage: json['mileage'],
-      options: List<String>.from(json['options'] ?? []),
-      location: json['location'],
-      price: (json['price'] as num).toDouble(),
-      description: json['description'],
-      imageFile: json['image_file'] != null ? File(json['image_file']) : null,
-      imageUrl: json['image_url'],
-      vendorId: json['vendor_id'],
+      id: json['id'] as int?,
+      title: json['title'] as String? ?? '',
+      carCondition: json['car_condition'] as String? ?? '',
+      year: json['year'] as int? ?? 0,
+      brand: json['brand'] as String? ?? '',
+      model: json['model'] as String? ?? '',
+      fuelType: json['fuel_type'] as String? ?? '',
+      mileage: json['mileage'] as int? ?? 0,
+      options: json['options'] as String? ?? '',
+      location: json['location'] as String? ?? '',
+      price: parsedPrice,
+      description: json['description'] as String? ?? '',
+      imageFile: json['image_file'] != null ? File(json['image_file'] as String) : null,
+      imageUrl: json['image_url'] as String? ?? '',
+      vendorId: json['vendor_id'] as int? ?? 0,
     );
   }
 
@@ -68,7 +79,7 @@ class CarAnnouncement {
         'location': location,
         'price': price,
         'description': description,
-        'image_file': imageFile?.path, // null-safe
+        'image_file': imageFile?.path,
         'image_url': imageUrl,
         'vendor_id': vendorId,
       };
@@ -81,12 +92,12 @@ class CarAnnouncement {
     String? model,
     String? fuelType,
     int? mileage,
-    List<String>? options,
+    String? options,
     String? location,
     double? price,
     String? description,
-    String? imageUrl,
     File? imageFile,
+    String? imageUrl,
     int? vendorId,
   }) {
     return CarAnnouncement(

@@ -6,11 +6,15 @@ import 'package:image_picker/image_picker.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pfefront/blocs/announcement/car_announcement_bloc.dart';
 import 'package:pfefront/data/models/announcement_model.dart';
+import 'package:pfefront/utils/shared_prefs_helper.dart';
 
 // If the Announcement class is not defined in the imported file, define it here or ensure the correct file is imported.
 
 class PublierAnnoncePage extends StatefulWidget {
-  const PublierAnnoncePage({super.key});
+final Map<String, dynamic>? publicationData; // Données de la publication
+
+
+  const PublierAnnoncePage({super.key, this.publicationData});
 
   @override
   State<PublierAnnoncePage> createState() => _CreateEditCarPageState();
@@ -97,7 +101,7 @@ class _CreateEditCarPageState extends State<PublierAnnoncePage> {
     );
   }
 
-  void _submitForm() {
+  void _submitForm() async {
     if (_formKey.currentState!.validate()) {
       if (selectedBrand == null ||
           selectedModel == null ||
@@ -114,6 +118,9 @@ class _CreateEditCarPageState extends State<PublierAnnoncePage> {
         final year = int.parse(_yearController.text);
         final mileage = int.parse(_kilometersController.text);
         final price = double.parse(_priceController.text);
+        final String optionsString = selectedFeatures.join(',');
+        final userId = await SharedPrefsHelper.getUserId();
+
 
         // Créer l'objet CarAnnouncement avec les données du formulaire
         final announcement = CarAnnouncement(
@@ -124,13 +131,13 @@ class _CreateEditCarPageState extends State<PublierAnnoncePage> {
           model: selectedModel!,
           fuelType: selectedFuel!,
           mileage: mileage,
-          options: selectedFeatures,
+          options: optionsString,
           location: _locationController.text,
           price: price,
           description: _descriptionController.text,
           imageFile: selectedImage!,
           imageUrl: '', // Provide a valid URL or placeholder string
-          vendorId: 1, // À remplacer par l'ID du vendeur connecté
+          vendorId: int.parse(userId!) ,
         );
 
         // Envoyer l'événement au Bloc
@@ -178,10 +185,6 @@ class _CreateEditCarPageState extends State<PublierAnnoncePage> {
             Navigator.pop(context); // Fermer le bottom sheet
             Navigator.pop(context); // Revenir à l'écran précédent
           });
-        } else if (state is CarAnnouncementError) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(state.toString())),
-          );
         }
       },
       child: Scaffold(
@@ -311,12 +314,13 @@ class _CreateEditCarPageState extends State<PublierAnnoncePage> {
                               label: Text(feature),
                               selected: selectedFeatures.contains(feature),
                               onSelected: (isSelected) {
-                                setState(() {
-                                  isSelected
-                                      ? selectedFeatures.add(feature)
-                                      : selectedFeatures.remove(feature);
-                                });
-                              },
+  setState(() {
+    isSelected
+        ? selectedFeatures.add(feature)
+        : selectedFeatures.remove(feature);
+  });
+},
+
                             ),
                           )
                           .toList(),

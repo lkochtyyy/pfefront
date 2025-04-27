@@ -4,10 +4,12 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pfefront/blocs/auth/auth_bloc.dart';
 import 'package:pfefront/blocs/resetpass/reset_password_bloc.dart';
 import 'package:pfefront/blocs/announcement/car_announcement_bloc.dart'; // Import ajouté
+import 'package:pfefront/blocs/userupdate/user_update_bloc.dart';
 import 'package:pfefront/data/repositories/auth_repository.dart';
 import 'package:pfefront/data/repositories/forgetpass_repository.dart';
 import 'package:pfefront/data/repositories/announcement_repository.dart';
 import 'package:pfefront/pages/pass1.dart'; // Import ajouté
+import 'package:pfefront/data/repositories/user_repository.dart';
 
 void main() {
   final AuthRepository authRepository = AuthRepository();
@@ -49,6 +51,12 @@ class MyApp extends StatelessWidget {
             repository: announcementRepository,
           ),
         ),
+         BlocProvider<UserUpdateBloc>(
+          create: (context) => UserUpdateBloc(
+             UserRepository(),
+          ),
+        ),
+        
       ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,

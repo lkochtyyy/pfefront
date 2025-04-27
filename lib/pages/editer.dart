@@ -1,59 +1,19 @@
 import 'package:flutter/material.dart';
-import 'package:pfefront/pages/editprofile.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:lottie/lottie.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:pfefront/blocs/auth/auth_bloc.dart';
+import 'package:pfefront/blocs/auth/auth_event.dart';
+import 'package:pfefront/blocs/auth/auth_state.dart';
 import 'package:pfefront/pages/adressupdate.dart';
 import 'package:pfefront/pages/emailupdate.dart';
 import 'package:pfefront/pages/mdpupdate.dart';
+import 'package:pfefront/pages/nameupdate.dart';
 import 'package:pfefront/pages/phonenumberupdate.dart';
 import 'package:pfefront/pages/profilepicture.dart';
-import 'package:pfefront/pages/nameupdate.dart';
+import 'package:pfefront/utils/shared_prefs_helper.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:pfefront/data/models/user_model.dart'; // Ensure this path points to the file where the User class is defined
+import 'package:lottie/lottie.dart';
 import 'package:google_fonts/google_fonts.dart';
-
-void main() {
-  runApp(const UserAccountApp());
-}
-
-class UserAccountApp extends StatelessWidget {
-  const UserAccountApp({super.key});
-
-  static const Color mainColor = Color(0xFF50C2C9);
-  static const Color secondaryColor = Color(0xFFE1F5F7);
-  static const Color backgroundColor = Color.fromARGB(255, 235, 237, 243);
-
-  @override
-  Widget build(BuildContext context) {
-    final lightTheme = ThemeData(
-      appBarTheme: AppBarTheme(
-        backgroundColor: mainColor,
-        foregroundColor: Colors.black87,
-        elevation: 0,
-        titleTextStyle: GoogleFonts.poppins(
-          color: Colors.black87,
-          fontWeight: FontWeight.bold,
-          fontSize: 18,
-        ),
-        iconTheme: const IconThemeData(color: Colors.black87),
-      ),
-      textTheme: TextTheme(
-        bodyLarge: GoogleFonts.poppins(
-            fontSize: 14, fontWeight: FontWeight.normal, color: Colors.black87),
-        bodyMedium: GoogleFonts.poppins(
-            fontSize: 13, color: const Color.fromARGB(255, 20, 9, 9)),
-        titleLarge: GoogleFonts.poppins(
-            fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black54),
-        labelLarge: GoogleFonts.poppins(fontWeight: FontWeight.bold),
-      ),
-    );
-
-    return MaterialApp(
-      title: 'User Account',
-      debugShowCheckedModeBanner: false,
-      theme: lightTheme,
-      home: const UserAccountPage(),
-    );
-  }
-}
 
 class UserAccountPage extends StatefulWidget {
   const UserAccountPage({super.key});
@@ -73,6 +33,7 @@ class _UserAccountPageState extends State<UserAccountPage> {
       setState(() => opacity = 1.0);
     });
     _loadAvatar();
+    _loadUserProfile();
   }
 
   Future<void> _loadAvatar() async {
@@ -85,209 +46,225 @@ class _UserAccountPageState extends State<UserAccountPage> {
     }
   }
 
+  Future<void> _loadUserProfile() async {
+    final userId = await SharedPrefsHelper.getUserId();
+    if (userId != null) {
+      context.read<AuthBloc>().add(FetchUserProfile(userId));
+    }
+  }
+
+
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      extendBodyBehindAppBar: false,
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () {},
-          // Permet de revenir à la page précédente
+          onPressed: () => Navigator.pop(context),
         ),
         title: Text(
           'User Account',
           style: GoogleFonts.poppins(),
         ),
       ),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              Color(0xFF50C2C9),
-              Color.fromARGB(255, 235, 237, 243),
-              Color(0xFFE1F5F7),
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
+      body: BlocConsumer<AuthBloc, AuthState>(
+        listener: (context, state) {
+          if (state is AccountDeleted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Account deleted successfully.')),
+            );
+            Navigator.pop(context); // Navigate back after deletion
+          } else if (state is UserProfileError) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(state.message)),
+            );
+          }
+        },
+        builder: (context, state) {
+          if (state is AuthLoading) {
+            return const Center(child: CircularProgressIndicator());
+          } else if (state is UserProfileLoaded) {
+            final user = state.user;
+            return _buildUserProfile(user);
+          } else if (state is UserProfileError) {
+            return Center(child: Text('Error: ${state.message}'));
+          }
+          return const Center(child: Text('No user data available.'));
+        },
+      ),
+    );
+  }
+
+  Widget _buildUserProfile( UserModel user) {
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            Color(0xFF50C2C9),
+            Color.fromARGB(255, 235, 237, 243),
+            Color(0xFFE1F5F7),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
-        child: AnimatedOpacity(
-          duration: const Duration(milliseconds: 500),
-          opacity: opacity,
-          child: ListView(
-            padding: const EdgeInsets.all(16),
-            children: [
-              sectionTitle('Profile Information'),
-              cardContainer(
-                child: ListTile(
-                  leading: selectedAvatarPath != null
-                      ? CircleAvatar(
-                          backgroundImage: AssetImage(selectedAvatarPath!),
-                        )
-                      : const Icon(Icons.person),
-                  title: const Text('Profile Picture'),
-                  subtitle: const Text('(Only visible for you)'),
-                  onTap: () async {
-                    await Navigator.push(
+      ),
+      child: AnimatedOpacity(
+        duration: const Duration(milliseconds: 500),
+        opacity: opacity,
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            sectionTitle('Profile Information'),
+            cardContainer(
+              child: ListTile(
+                leading: selectedAvatarPath != null
+                    ? CircleAvatar(
+                        backgroundImage: AssetImage(selectedAvatarPath!),
+                      )
+                    : const Icon(Icons.person),
+                title: const Text('Profile Picture'),
+                subtitle: const Text('(Only visible for you)'),
+                onTap: () async {
+                  await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => const ProfilePictureScreen()),
+                  );
+                  _loadAvatar();
+                },
+              ),
+            ),
+            const SizedBox(height: 16),
+            sectionTitle('Login'),
+            cardContainer(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  infoTile(
+                    Icons.email,
+                    'E-Mail',
+                    user.email,
+                    onTap: () => Navigator.push(
                       context,
                       MaterialPageRoute(
-                          builder: (context) => const ProfilePictureScreen()),
-                    );
-                    _loadAvatar();
-                  },
-                ),
-              ),
-              const SizedBox(height: 16),
-              sectionTitle('Login'),
-              cardContainer(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.green,
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: const Text(
-                        'Confirmed',
-                        style: TextStyle(color: Colors.white, fontSize: 12),
-                      ),
+                          builder: (context) => const EmailUpdatePage()),
                     ),
-                    const SizedBox(height: 8),
-                    infoTile(
-                      Icons.email,
-                      'E-Mail',
-                      'hachem.barhoumi22@gmail.com',
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) => const EmailUpdatePage()),
-                      ),
-                    ),
-                    const Divider(),
-                    infoTile(
-                      Icons.lock,
-                      'Password',
-                      '********',
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) => const PasswordUpdateUser()),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-              sectionTitle('Contact'),
-              cardContainer(
-                child: Column(
-                  children: [
-                    infoTile(
-                      Icons.person_outline,
-                      'Name',
-                      'Barhoumi. Hechem',
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) => const NameUser()),
-                      ),
-                    ),
-                    const Divider(),
-                    infoTile(
-                      Icons.location_on,
-                      'Address',
-                      'No information available',
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) => const AddressUser()),
-                      ),
-                    ),
-                    const Divider(),
-                    infoTile(
-                      Icons.phone,
-                      'Telephone Number',
-                      'No information available',
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) => const NumberUpdatePage()),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 30),
-              Center(
-                child: ElevatedButton.icon(
-                  icon: const Icon(Icons.delete_forever),
-                  label: const Text(
-                    'Delete Account',
-                    style: TextStyle(fontWeight: FontWeight.bold),
                   ),
-                  onPressed: () {
-                    showDialog(
-                      context: context,
-                      builder: (BuildContext context) => AlertDialog(
-                        title: const Text('Confirm Deletion'),
-                        content: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Lottie.asset('assets/json/attention.json',
-                                height: 150, width: 150),
-                            const SizedBox(height: 10),
-                            const Text(
-                                'Are you sure you want to delete your account? This action cannot be undone.'),
-                          ],
-                        ),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.of(context).pop(),
-                            child: const Text(
-                              'Cancel',
-                              style: TextStyle(
-                                  color: Colors.black), // Couleur noire
-                            ),
-                          ),
-                          ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.red,
-                            ),
-                            onPressed: () {
-                              Navigator.of(context).pop();
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Account deleted.'),
-                                ),
-                              );
-                            },
-                            child: const Text(
-                              'Delete',
-                              style: TextStyle(
-                                  color: Colors.black), // Couleur noire
-                            ),
-                          ),
+                  const Divider(),
+                  infoTile(
+                    Icons.lock,
+                    'Password',
+                    '********',
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => const PasswordUpdateUser()),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            sectionTitle('Contact'),
+            cardContainer(
+              child: Column(
+                children: [
+                  infoTile(
+                    Icons.person_outline,
+                    'Name',
+                    user.nom,
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => const NameUser()),
+                    ),
+                  ),
+                  const Divider(),
+                  infoTile(
+                    Icons.location_on,
+                    'Address',
+                    'adress',
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => const AddressUser()),
+                    ),
+                  ),
+                  const Divider(),
+                  infoTile(
+                    Icons.phone,
+                    'Telephone Number',
+                    user.tel ?? 'No information available',
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => const NumberUpdatePage()),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 30),
+            Center(
+              child: ElevatedButton.icon(
+                icon: const Icon(Icons.delete_forever),
+                label: const Text(
+                  'Delete Account',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                onPressed: () {
+                  showDialog(
+                    context: context,
+                    builder: (BuildContext context) => AlertDialog(
+                      title: const Text('Confirm Deletion'),
+                      content: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Lottie.asset('assets/json/attention.json',
+                              height: 150, width: 150),
+                          const SizedBox(height: 10),
+                          const Text(
+                              'Are you sure you want to delete your account? This action cannot be undone.'),
                         ],
                       ),
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.of(context).pop(),
+                          child: const Text(
+                            'Cancel',
+                            style: TextStyle(color: Colors.black),
+                          ),
+                        ),
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.red,
+                          ),
+                          onPressed: () {
+                            Navigator.of(context).pop();
+                            
+                          },
+                          child: const Text(
+                            'Delete',
+                            style: TextStyle(color: Colors.black),
+                          ),
+                        ),
+                      ],
                     ),
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
-            ],
-          ),
+            ),
+            const SizedBox(height: 16),
+          ],
         ),
       ),
     );

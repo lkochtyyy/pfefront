@@ -4,12 +4,15 @@ import 'package:pfefront/pages/login.dart' as login_page;
 import 'package:pfefront/pages/signupscreen.dart' as signup_page;
 import 'package:flutter_animate/flutter_animate.dart';
 
+
 class WelcomeScreen extends StatelessWidget {
   const WelcomeScreen({super.key});
+
 
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
+
 
     return Scaffold(
       body: Container(
@@ -28,11 +31,13 @@ class WelcomeScreen extends StatelessWidget {
           children: [
             // Image de fond avec animation
 
+
             // Contenu principal
             SafeArea(
               child: Column(
                 children: [
                   SizedBox(height: size.height * 0.25),
+
 
                   // Image de groupe avec animation
                   Expanded(
@@ -47,6 +52,7 @@ class WelcomeScreen extends StatelessWidget {
                           .slideY(begin: -0.2), // Animation de fade et slide
                     ),
                   ),
+
 
                   // Section des boutons avec padding et marges ajustées
                   Padding(
@@ -121,16 +127,19 @@ class WelcomeScreen extends StatelessWidget {
   }
 }
 
+
 class _AuthButton extends StatelessWidget {
   final String text;
   final bool isPrimary;
   final VoidCallback onPressed;
+
 
   const _AuthButton({
     required this.text,
     this.isPrimary = true,
     required this.onPressed,
   });
+
 
   @override
   Widget build(BuildContext context) {
@@ -163,3 +172,6 @@ class _AuthButton extends StatelessWidget {
     );
   }
 }
+
+
+

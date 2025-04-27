@@ -1,4 +1,5 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:pfefront/data/models/user_model.dart';
 import '../../data/repositories/auth_repository.dart';
 import 'auth_event.dart';
 import 'auth_state.dart';
@@ -9,6 +10,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   AuthBloc({required this.authRepository}) : super(AuthInitial()) {
     on<RegisterUser>(_onRegisterUser);
     on<LoginUser>(_onLoginUser);
+    on<FetchUserProfile>(_onFetchUserProfile);
   }
 
   Future<void> _onRegisterUser(RegisterUser event, Emitter<AuthState> emit) async {
@@ -34,4 +36,16 @@ Future<void> _onLoginUser(LoginUser event, Emitter<AuthState> emit) async {
     emit(AuthFailure(e.toString()));
   }
 }
+ Future<void> _onFetchUserProfile(
+    FetchUserProfile event, Emitter<AuthState> emit) async {
+  emit(UserProfileLoading());
+  try {
+    final user = await authRepository.getUserById(event.userId);
+    emit(UserProfileLoaded(user));
+  } catch (e) {
+    emit(UserProfileError(e.toString()));
+  }
 }
+}
+
+// class AuthBloc extends Bloc<AuthEvent, AuthState> {

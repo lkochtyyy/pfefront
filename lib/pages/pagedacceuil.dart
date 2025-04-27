@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:pfefront/pages/favoris.dart';
@@ -7,7 +8,10 @@ import 'package:pfefront/pages/editprofile.dart';
 import 'package:pfefront/pages/publier.dart';
 import 'package:pfefront/pages/search.dart';
 import 'package:pfefront/pages/filtrage.dart';
+import 'package:pfefront/pages/viewpub.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
+import 'package:pfefront/blocs/announcement/car_announcement_bloc.dart';
+import 'package:pfefront/data/models/announcement_model.dart';
 
 class FeaturedCarsPage extends StatefulWidget {
   final String userId;
@@ -18,44 +22,6 @@ class FeaturedCarsPage extends StatefulWidget {
 }
 
 class _FeaturedCarsPageState extends State<FeaturedCarsPage> {
-  List<Map<String, dynamic>> cars = [
-    {
-      'title': 'BMW serie 2',
-      'price': 180000,
-      'status': 'NOUVEAU',
-      'color': Colors.blueGrey[200],
-      'image': 'assets/bmw s2.png'
-    },
-    {
-      'title': 'C63 AMG',
-      'price': 200000,
-      'status': 'Ancien',
-      'color': Colors.blueGrey[200],
-      'image': 'assets/C63 AMG.png'
-    },
-    {
-      'title': 'Audi RS7',
-      'price': 250000,
-      'status': 'NOUVEAU',
-      'color': Colors.blueGrey[200],
-      'image': 'assets/Audi RS7.png'
-    },
-    {
-      'title': 'Mercedes G63',
-      'price': 300000,
-      'status': 'Ancien',
-      'color': Colors.blueGrey[200],
-      'image': 'assets/Mercedes G63.png'
-    },
-    {
-      'title': 'Porsche 911',
-      'price': 400000,
-      'status': 'Ancien',
-      'color': Colors.blueGrey[200],
-      'image': 'assets/Porsche 911.png'
-    },
-  ];
-
   late stt.SpeechToText _speech;
   bool _isListening = false;
   String _searchText = '';
@@ -65,6 +31,8 @@ class _FeaturedCarsPageState extends State<FeaturedCarsPage> {
   void initState() {
     super.initState();
     _speech = stt.SpeechToText();
+    // Trigger fetching announcements
+    context.read<CarAnnouncementBloc>().add(FetchAnnouncements());
   }
 
   void _startListening() async {
@@ -106,19 +74,8 @@ class _FeaturedCarsPageState extends State<FeaturedCarsPage> {
     );
   }
 
-  void sortCars() {
-    setState(() {
-      cars.sort((a, b) => isAscending
-          ? a['price'].compareTo(b['price'])
-          : b['price'].compareTo(a['price']));
-      isAscending = !isAscending;
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
-    List<Map<String, dynamic>> displayedCars = cars;
-
     return Scaffold(
       body: Stack(
         children: [
@@ -135,18 +92,56 @@ class _FeaturedCarsPageState extends State<FeaturedCarsPage> {
                 Expanded(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: GridView.builder(
-                      padding: const EdgeInsets.only(bottom: 20),
-                      gridDelegate:
-                          const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        crossAxisSpacing: 10,
-                        mainAxisSpacing: 10,
-                        childAspectRatio: 0.75,
-                      ),
-                      itemCount: displayedCars.length,
-                      itemBuilder: (context, index) {
-                        return CarCard(car: displayedCars[index]);
+                    child: BlocBuilder<CarAnnouncementBloc, CarAnnouncementState>(
+                      builder: (context, state) {
+                        if (state is CarAnnouncementLoading) {
+                          return const Center(child: CircularProgressIndicator());
+                        } else if (state is CarAnnouncementLoaded) {
+                          // filter by search text
+                          final List<CarAnnouncement> list = state.announcements
+                              .where((a) => a.title
+                                  .toLowerCase()
+                                  .contains(_searchText.toLowerCase()))
+                              .toList();
+                          return GridView.builder(
+                            padding: const EdgeInsets.only(bottom: 20),
+                            gridDelegate:
+                                const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 2,
+                              crossAxisSpacing: 10,
+                              mainAxisSpacing: 10,
+                              childAspectRatio: 0.75,
+                            ),
+                            itemCount: list.length,
+                            itemBuilder: (context, index) {
+                              final car = list[index];
+                              final imageUrl = car.imageUrl;
+                              return CarCard(
+                                data: {
+                                  'id': car.id,
+                                  'title': car.title,
+                                  'price': car.price,
+                                  'status': car.carCondition,
+                                  'image': imageUrl,
+                                },
+                                onTap: () {
+                                  print(car.id);
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => CarDetailPage(annonceId: '${car.id}'),
+                                       
+                                      ),
+                                    
+                                  );
+                                },
+                              );
+                            },
+                          );            
+                        } else if (state is CarAnnouncementError) {
+                          return Center(child: Text('Erreur: ${state.error}'));
+                        }
+                        return const SizedBox();
                       },
                     ),
                   ),
@@ -190,25 +185,24 @@ class _FeaturedCarsPageState extends State<FeaturedCarsPage> {
         ),
       ),
       centerTitle: false,
+      backgroundColor: Colors.transparent,
+      elevation: 0,
       actions: [
         IconButton(
           icon: const Icon(Icons.person, color: Colors.black),
           onPressed: () {
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (context) => const EditProfilePage()),
+              MaterialPageRoute(
+                  builder: (context) => const EditProfilePage()),
             );
           },
         ),
         IconButton(
           icon: const Icon(Icons.more_vert, color: Colors.black),
-          onPressed: () {
-            print("More options");
-          },
+          onPressed: () {},
         ),
       ],
-      backgroundColor: Colors.transparent,
-      elevation: 0,
     );
   }
 
@@ -353,104 +347,190 @@ class _FeaturedCarsPageState extends State<FeaturedCarsPage> {
 }
 
 class CarCard extends StatelessWidget {
-  final Map<String, dynamic> car;
-  const CarCard({super.key, required this.car});
+  final Map<String, dynamic> data;
+  final VoidCallback? onTap;
+
+  const CarCard({
+    super.key, 
+    required this.data,
+    this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: const [
-          BoxShadow(
-            color: Colors.black12,
-            blurRadius: 10,
-            offset: Offset(0, 5),
-          )
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: Stack(
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(15),
-                  child: Image.asset(
-                    car['image'],
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                  ),
+    final image = data['image'] as String;
+    final priceFormatted = "\$${data['price'].toString().replaceAllMapped(
+      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+      (m) => '${m[1]},',
+    )}";
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        constraints: BoxConstraints(
+          maxWidth: MediaQuery.of(context).size.width * 0.45, // Limit card width
+        ),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: const [
+            BoxShadow(
+              color: Colors.black12,
+              blurRadius: 10,
+              offset: Offset(0, 5),
+            )
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min, // Important to prevent overflow
+          children: [
+            // Image container with fixed aspect ratio
+            AspectRatio(
+              aspectRatio: 1.5,
+              child: Hero(
+                tag: 'car-image-${data['id']}',
+                child: Stack(
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(15),
+                      child: image.startsWith('http')
+                          ? Image.network(
+                              image,
+                              width: double.infinity,
+                              height: double.infinity,
+                              fit: BoxFit.cover,
+                              loadingBuilder: (context, child, loadingProgress) {
+                                if (loadingProgress == null) return child;
+                                return Center(
+                                  child: CircularProgressIndicator(
+                                    value: loadingProgress.expectedTotalBytes != null
+                                        ? loadingProgress.cumulativeBytesLoaded /
+                                            loadingProgress.expectedTotalBytes!
+                                        : null,
+                                  ),
+                                );
+                              },
+                            )
+                          : Image.asset(
+                              image,
+                              width: double.infinity,
+                              height: double.infinity,
+                              fit: BoxFit.cover,
+                            ),
+                    ),
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.8),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.star, 
+                            color: Colors.amber, size: 18),
+                      ),
+                    ),
+                  ],
                 ),
-                const Positioned(
-                  top: 8,
-                  right: 8,
-                  child: Icon(Icons.star, color: Colors.black54),
+              ),
+            ),
+            const SizedBox(height: 10),
+            // Title with max lines
+            Text(
+              data['title'],
+              style: GoogleFonts.poppins(
+                fontSize: 16, 
+                fontWeight: FontWeight.w600),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 6),
+            // Rating and status row
+            Row(
+              children: [
+                const Icon(Icons.star, size: 16, color: Colors.amber),
+                const SizedBox(width: 4),
+                Text(
+                  "4.5",
+                  style: GoogleFonts.poppins(fontSize: 14),
+                ),
+                const SizedBox(width: 6),
+                const Text(
+                  "|",
+                  style: TextStyle(fontSize: 14, color: Colors.grey),
+                ),
+                const SizedBox(width: 9),
+                Flexible(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: _getStatusColor(data['status']),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      data['status'],
+                      style: GoogleFonts.poppins(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: _getStatusTextColor(data['status']),
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
                 ),
               ],
             ),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            car['title'],
-            style:
-                GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w600),
-          ),
-          const SizedBox(height: 6),
-          Row(
-            children: [
-              const Icon(Icons.star, size: 16, color: Colors.amber),
-              const SizedBox(width: 4),
-              const Text(
-                "4.5",
-                style: TextStyle(fontSize: 14),
-              ),
-              const SizedBox(width: 6),
-              const Text(
-                "|",
-                style: TextStyle(fontSize: 14, color: Colors.grey),
-              ),
-              const SizedBox(width: 9),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade300,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  car['status'],
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.black87,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Text(
-            "\$${car['price'].toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]},')}",
-            style: GoogleFonts.poppins(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
+            const SizedBox(height: 10),
+            // Price with better formatting
+            Text(
+              priceFormatted,
+              style: GoogleFonts.poppins(
+                fontSize: 16, 
+                fontWeight: FontWeight.bold,
+                color: Colors.green[800]),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
-}
 
+  Color _getStatusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'new':
+        return Colors.blue.shade100;
+      case 'used':
+        return Colors.grey.shade300;
+      case 'certified':
+        return Colors.green.shade100;
+      default:
+        return Colors.grey.shade300;
+    }
+  }
+
+  Color _getStatusTextColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'new':
+        return Colors.blue.shade800;
+      case 'used':
+        return Colors.black87;
+      case 'certified':
+        return Colors.green.shade800;
+      default:
+        return Colors.black87;
+    }
+  }
+}
 Route _createSearchRoute() {
   return PageRouteBuilder(
     pageBuilder: (context, animation, secondaryAnimation) => SearchCarsPage(),
     transitionsBuilder: (context, animation, secondaryAnimation, child) {
-      const beginOffset = Offset(0.0, 1.0); // from bottom
+      const beginOffset = Offset(0.0, 1.0);
       const endOffset = Offset.zero;
       const curve = Curves.easeInOut;
 

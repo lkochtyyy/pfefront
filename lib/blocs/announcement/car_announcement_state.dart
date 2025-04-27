@@ -32,3 +32,21 @@ class CarAnnouncementError extends CarAnnouncementState {
   @override
   List<Object> get props => [error];
 }
+class VendorAnnouncementsLoading extends CarAnnouncementState {}
+
+class VendorAnnouncementsLoaded extends CarAnnouncementState {
+  final List<CarAnnouncement> announcements;
+
+  const VendorAnnouncementsLoaded(this.announcements);
+
+  @override
+  List<Object> get props => [announcements];
+}
+class VendorAnnouncementsError extends CarAnnouncementState {
+  final String message;
+
+  const VendorAnnouncementsError(this.message);
+
+  @override
+  List<Object> get props => [message]; // Ajout pour Equatable
+}

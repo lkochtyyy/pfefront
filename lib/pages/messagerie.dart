@@ -1,72 +1,188 @@
 import 'package:flutter/material.dart';
-import 'package:pfefront/pages/firstmsg.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:lottie/lottie.dart';
+import 'package:pfefront/pages/add.dart';
 
-class ChatsPage extends StatelessWidget {
+
+class ChatsPage extends StatefulWidget {
   const ChatsPage({super.key});
+
+
+  @override
+  State<ChatsPage> createState() => _ChatsPageState();
+}
+
+
+class _ChatsPageState extends State<ChatsPage> {
+  final List<String> messages = const []; // simule une liste vide
+  bool _isSearching = false;
+  final TextEditingController _searchController = TextEditingController();
+
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFE0F7FA),
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        title: const Text(
-          'Messages',
-          style: TextStyle(
-            color: Colors.black,
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        centerTitle: true,
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: Column(
-          children: [
-            _buildSearchBar(),
-            const SizedBox(height: 10),
-            Expanded(
-              child: ListView.builder(
-                itemCount: 1,
-                itemBuilder: (context, index) {
-                  return _buildChatItem(context, index);
-                },
+      body: Stack(
+        children: [
+          Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Color(0xFF50C2C9),
+                  Color(0xFFE1F5F7),
+                  Color.fromARGB(255, 235, 237, 243),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
               ),
             ),
-          ],
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const AddContactPage()),
-          );
-        },
-        backgroundColor: Colors.pinkAccent,
-        child: const Icon(Icons.add, color: Colors.white),
+            child: SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Column(
+                  children: [
+                    _buildAnimatedAppBar(),
+                    const SizedBox(height: 0.1),
+                    Expanded(
+                      child: messages.isEmpty
+                          ? Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Lottie.asset(
+                                    'assets/json/message.json',
+                                    width: 300,
+                                    height: 300,
+                                  ),
+                                  const SizedBox(height: 20),
+                                  Text(
+                                    'Aucun message trouvé',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            )
+                          : ListView.builder(
+                              itemCount: messages.length,
+                              itemBuilder: (context, index) {
+                                return _buildChatItem(context, index);
+                              },
+                            ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+
+          // -------- FloatingActionButton animé avec Lottie --------
+          Positioned(
+            bottom: 1.0, // Distance du bas de l'écran
+            right: 1.0, // Distance du côté droit de l'écran
+            child: GestureDetector(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (context) => const AddContactApp()),
+                );
+              },
+              child: SizedBox(
+                width: 150, // Ajuste la taille de l'animation
+                height: 150,
+                child: Lottie.asset(
+                  'assets/json/text.json',
+                  fit: BoxFit.contain,
+                  repeat:
+                      true, // ou false si tu veux juste une animation une seule fois
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildSearchBar() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8.0),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+
+  Widget _buildAnimatedAppBar() {
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 300),
+      transitionBuilder: (child, animation) => SizeTransition(
+        sizeFactor: animation,
+        axisAlignment: -1.0,
+        child: child,
       ),
-      child: const TextField(
-        decoration: InputDecoration(
-          hintText: 'Chercher',
-          prefixIcon: Icon(Icons.search),
-          border: InputBorder.none,
+      child: _isSearching ? _buildSearchField() : _buildTitleBar(),
+    );
+  }
+
+
+  Widget _buildTitleBar() {
+    return AppBar(
+      key: const ValueKey('titleAppBar'),
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      title: Text(
+        'Messages',
+        style: GoogleFonts.poppins(
+          color: Colors.black,
+          fontSize: 22,
+          fontWeight: FontWeight.bold,
         ),
+      ),
+      centerTitle: true,
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.search, color: Colors.black),
+          onPressed: () {
+            setState(() {
+              _isSearching = true;
+            });
+          },
+        ),
+      ],
+    );
+  }
+
+
+  Widget _buildSearchField() {
+    return AppBar(
+      key: const ValueKey('searchAppBar'),
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      leading: IconButton(
+        icon: const Icon(Icons.arrow_back, color: Colors.black),
+        onPressed: () {
+          setState(() {
+            _isSearching = false;
+            _searchController.clear();
+          });
+        },
+      ),
+      title: TextField(
+        controller: _searchController,
+        autofocus: true,
+        style: GoogleFonts.poppins(
+          color: Colors.black,
+          fontSize: 18,
+        ),
+        decoration: InputDecoration(
+          hintText: 'Rechercher...',
+          hintStyle: GoogleFonts.poppins(color: Colors.black54),
+          border: InputBorder.none,
+          isDense: true,
+          contentPadding: EdgeInsets.zero,
+        ),
+        cursorColor: Colors.black,
       ),
     );
   }
+
 
   Widget _buildChatItem(BuildContext context, int index) {
     return Column(
@@ -76,151 +192,23 @@ class ChatsPage extends StatelessWidget {
             backgroundColor: Colors.grey.shade300,
             child: const Icon(Icons.person, color: Colors.white),
           ),
-          title: const Text('Mohamed Ali',
-              style: TextStyle(fontWeight: FontWeight.bold)),
-          subtitle: const Text('Last message preview...'),
+          title: Text(
+            'Mohamed Ali',
+            style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
+          ),
+          subtitle: Text(
+            'Last message preview...',
+            style: GoogleFonts.poppins(),
+          ),
           onTap: () {
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (context) => const ChatApp()),
+              MaterialPageRoute(builder: (context) => const AddContactApp()),
             );
           },
         ),
         const Divider(thickness: 0.5, indent: 16, endIndent: 16),
-        ListTile(
-          leading: CircleAvatar(
-            backgroundColor: Colors.grey.shade300,
-            child: const Icon(Icons.person, color: Colors.white),
-          ),
-          title: const Text('Hechem',
-              style: TextStyle(fontWeight: FontWeight.bold)),
-          subtitle: const Text('Last message preview...'),
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const ChatApp()),
-            );
-          },
-        ),
       ],
-    );
-  }
-}
-
-class AddContactPage extends StatefulWidget {
-  const AddContactPage({super.key});
-
-  @override
-  _AddContactPageState createState() => _AddContactPageState();
-}
-
-class _AddContactPageState extends State<AddContactPage> {
-  final TextEditingController _nameController = TextEditingController();
-  final TextEditingController _phoneController = TextEditingController();
-  List<Map<String, String>> contacts = []; // Liste des contacts
-  String message = '';
-
-  void _addContact() {
-    if (_nameController.text.isNotEmpty && _phoneController.text.isNotEmpty) {
-      setState(() {
-        // Ajouter un nouveau contact à la liste
-        contacts.add({
-          'name': _nameController.text,
-          'phone': _phoneController.text,
-        });
-        message = 'Contact ajouté avec succès !';
-      });
-
-      // Réinitialiser les champs de texte
-      _nameController.clear();
-      _phoneController.clear();
-    } else {
-      setState(() {
-        message = 'Veuillez remplir tous les champs.';
-      });
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFD5F6FA),
-      appBar: AppBar(
-        title: const Text('Ajouter un Contact', textAlign: TextAlign.center),
-        centerTitle: true,
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            TextField(
-              controller: _nameController,
-              decoration: InputDecoration(
-                labelText: 'Nom',
-                prefixIcon: const Icon(Icons.person),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-            ),
-            const SizedBox(height: 10),
-            TextField(
-              controller: _phoneController,
-              keyboardType: TextInputType.phone,
-              decoration: InputDecoration(
-                labelText: 'Numéro de téléphone',
-                prefixIcon: const Icon(Icons.phone),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: _addContact,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color.fromARGB(255, 0, 5, 13),
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-              child: const Text(
-                'Ajouter',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              message,
-              style: TextStyle(
-                color: message == 'Contact ajouté avec succès !'
-                    ? Colors.green
-                    : Colors.red,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 20),
-            // Liste des contacts ajoutés
-            Expanded(
-              child: ListView.builder(
-                itemCount: contacts.length,
-                itemBuilder: (context, index) {
-                  return ListTile(
-                    title: Text(contacts[index]['name']!),
-                    subtitle: Text(contacts[index]['phone']!),
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

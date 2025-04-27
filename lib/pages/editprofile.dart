@@ -1,7 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
+
+import 'package:pfefront/blocs/auth/auth_bloc.dart';
+import 'package:pfefront/blocs/auth/auth_event.dart';
+import 'package:pfefront/blocs/auth/auth_state.dart';
+import 'package:pfefront/data/models/announcement_model.dart';
 import 'package:pfefront/pages/editer.dart';
+import 'package:pfefront/pages/mypubs.dart';
 import 'package:pfefront/pages/user_avatar_provider.dart';
+import 'package:pfefront/utils/shared_prefs_helper.dart';
 
 class EditProfilePage extends StatefulWidget {
   const EditProfilePage({super.key});
@@ -16,9 +24,19 @@ class _EditProfilePageState extends State<EditProfilePage> {
   @override
   void initState() {
     super.initState();
+    // Animation d'opacité
     Future.delayed(const Duration(milliseconds: 150), () {
       setState(() => _opacity = 1.0);
     });
+    _loadProfile();
+  }
+
+  Future<void> _loadProfile() async {
+    final userId = await SharedPrefsHelper.getUserId();
+    if (userId != null) {
+      // On dispatch l'événement pour charger le profil
+      context.read<AuthBloc>().add(FetchUserProfile(userId));
+    }
   }
 
   @override
@@ -64,8 +82,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
               Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(
-                      0.8), // Ajout de la transparence pour les cartes
+                  color: Colors.white.withOpacity(0.8),
                   borderRadius: BorderRadius.circular(20),
                   boxShadow: [
                     BoxShadow(
@@ -77,14 +94,14 @@ class _EditProfilePageState extends State<EditProfilePage> {
                 ),
                 child: Column(
                   children: [
+                    // Avatar animé
                     ValueListenableBuilder<String?>(
                       valueListenable: UserAvatar.avatarPath,
                       builder: (context, avatar, _) {
                         return AnimatedSwitcher(
                           duration: const Duration(milliseconds: 500),
                           child: CircleAvatar(
-                            key: ValueKey<String?>(
-                                avatar), // Pour assurer l'animation lors du changement
+                            key: ValueKey<String?>(avatar),
                             radius: 45,
                             backgroundColor: const Color(0xFF50C2C9),
                             backgroundImage:
@@ -99,14 +116,38 @@ class _EditProfilePageState extends State<EditProfilePage> {
                       },
                     ),
                     const SizedBox(height: 16),
-                    Text(
-                      'Hello, Barhoumi!',
-                      style: GoogleFonts.poppins(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 24,
-                        color: Colors.black87,
-                      ),
+
+                    // Nom dynamiquement via BLoC
+                    BlocBuilder<AuthBloc, AuthState>(
+                      builder: (context, state) {
+                        if (state is UserProfileLoading) {
+                          return const CircularProgressIndicator();
+                        } else if (state is UserProfileLoaded) {
+                          return Text(
+                            'Hello, ${state.user.nom}!',
+                            style: GoogleFonts.poppins(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 24,
+                              color: Colors.black87,
+                            ),
+                          );
+                        } else if (state is UserProfileError) {
+                          return Text(
+                            'Erreur: ${state.message}',
+                            style: GoogleFonts.poppins(color: Colors.red),
+                          );
+                        }
+                        return Text(
+                          'Hello, User!',
+                          style: GoogleFonts.poppins(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 24,
+                            color: Colors.black87,
+                          ),
+                        );
+                      },
                     ),
+
                     const SizedBox(height: 8),
                     Text(
                       'What would you like to do today?',
@@ -118,6 +159,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                   ],
                 ),
               ),
+
               const SizedBox(height: 24),
               Text(
                 'My Profile',
@@ -128,38 +170,76 @@ class _EditProfilePageState extends State<EditProfilePage> {
                 ),
               ),
               const SizedBox(height: 12),
-              buildOptionTile(
+                buildOptionTile(
                 context,
                 Icons.settings,
-                'Settings',
-                () {
+                'Détails personnelles',
+                () async {
+                  final userId = await SharedPrefsHelper.getUserId();
+                  if (userId != null) {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                        builder: (context) => const UserAccountApp()),
+                    builder: (context) => UserAccountPage(),
+                    ),
                   );
+                  }
                 },
               ),
               buildOptionTile(
                 context,
                 Icons.notifications,
-                'Notifications',
-                () {},
+                'Mes publications',
+                () async {
+                  final userId = await SharedPrefsHelper.getUserId();
+                  if (userId != null) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => MyPubsPage(
+                         
+                          currentUserId: userId,
+                        ),
+                      ),
+                    );
+                  } else {
+                    // Handle the case where userId is null
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('User ID not found')),
+                    );
+                  }
+                },
               ),
+
               const SizedBox(height: 40),
-              const Center(
-                child: Text(
-                  'Logged in as hachem.barhoumi22@gmail.com',
-                  style: TextStyle(
-                    color: Colors.black87,
-                    fontSize: 14,
-                  ),
-                ),
+
+              // Email dynamiquement via BLoC
+              BlocBuilder<AuthBloc, AuthState>(
+                builder: (context, state) {
+                  if (state is UserProfileLoaded) {
+                    return Center(
+                      child: Text(
+                        'Logged in as ${state.user.email}',
+                        style: const TextStyle(
+                          color: Colors.black87,
+                          fontSize: 14,
+                        ),
+                      ),
+                    );
+                  }
+                  return const SizedBox();
+                },
               ),
+
               const SizedBox(height: 12),
               Center(
                 child: ElevatedButton.icon(
-                  onPressed: () {},
+                  onPressed: () {
+                    // ici tu peux clear SharedPrefs et rediriger vers login
+                    SharedPrefsHelper.clearSession();
+                    Navigator.of(context)
+                        .pushNamedAndRemoveUntil('/login', (_) => false);
+                  },
                   icon: const Icon(Icons.logout, color: Color(0xFF50C2C9)),
                   label: Text(
                     'Logout',

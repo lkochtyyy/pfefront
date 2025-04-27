@@ -113,7 +113,7 @@ class _NumberUpdatePageState extends State<NumberUpdatePage>
         setState(() => isSaved = false);
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => const UserAccountApp()),
+          MaterialPageRoute(builder: (context) => const UserAccountPage()),
         );
       }
     }

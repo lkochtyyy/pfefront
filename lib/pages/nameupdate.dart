@@ -1,138 +1,95 @@
 import 'package:flutter/material.dart';
-import 'package:lottie/lottie.dart';
-import 'package:pfefront/pages/editer.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:lottie/lottie.dart';
+import 'package:pfefront/blocs/userupdate/user_update_bloc.dart';
+import 'package:pfefront/blocs/userupdate/user_update_event.dart';
+import 'package:pfefront/blocs/userupdate/user_update_state.dart';
+import 'package:pfefront/pages/editer.dart';
+import 'package:pfefront/utils/shared_prefs_helper.dart';
+
 
 class NameUser extends StatefulWidget {
-  const NameUser({super.key});
+  const NameUser({Key? key}) : super(key: key);
 
   @override
   State<NameUser> createState() => _NameUserState();
 }
 
-class _NameUserState extends State<NameUser>
-    with SingleTickerProviderStateMixin {
+class _NameUserState extends State<NameUser> with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
-  String? selectedSalutation = 'Not specified';
   final firstNameController = TextEditingController();
   final lastNameController = TextEditingController();
-  bool showInListings = true;
-  bool isPrivacyEnabled = false;
-  bool isSaved = false;
-  bool isLoading = false;
-
-  bool isFocused = false; // Flag to track focus state
+  final FocusNode firstNameFocusNode = FocusNode();
+  final FocusNode lastNameFocusNode = FocusNode();
 
   late AnimationController _animationController;
   late Animation<Offset> _offsetAnimation;
   late Animation<Offset> _stopAnimation;
 
-  FocusNode firstNameFocusNode = FocusNode();
-  FocusNode lastNameFocusNode = FocusNode();
-
-  @override
-  void dispose() {
-    firstNameController.dispose();
-    lastNameController.dispose();
-    _animationController.dispose();
-    firstNameFocusNode.dispose();
-    lastNameFocusNode.dispose();
-    super.dispose();
-  }
+  bool isFocused = false;
+  String? selectedSalutation = 'Not specified';
 
   @override
   void initState() {
     super.initState();
 
-    // Animation controller for translation
+    // Animation flottante
     _animationController = AnimationController(
       duration: const Duration(seconds: 3),
       vsync: this,
-    );
+    )..repeat(reverse: true);
 
     _offsetAnimation = Tween<Offset>(
-      begin: const Offset(0, 0),
+      begin: Offset.zero,
       end: const Offset(0, 0.1),
     ).animate(
-      CurvedAnimation(
-        parent: _animationController,
-        curve: Curves.linear,
-      ),
+      CurvedAnimation(parent: _animationController, curve: Curves.linear),
     );
 
     _stopAnimation = Tween<Offset>(
-      begin: const Offset(0, 0),
-      end: const Offset(0, 0), // No translation when focused
+      begin: Offset.zero,
+      end: Offset.zero,
     ).animate(
-      CurvedAnimation(
-        parent: _animationController,
-        curve: Curves.linear,
-      ),
+      CurvedAnimation(parent: _animationController, curve: Curves.linear),
     );
 
-    _animationController.repeat(reverse: true);
+    firstNameFocusNode.addListener(_onFocusChange);
+    lastNameFocusNode.addListener(_onFocusChange);
+  }
 
-    // Focus node listeners to stop translation when focused
-    firstNameFocusNode.addListener(() {
-      if (firstNameFocusNode.hasFocus) {
-        setState(() {
-          isFocused = true;
-        });
-      } else {
-        setState(() {
-          isFocused = false;
-        });
-      }
-    });
-
-    lastNameFocusNode.addListener(() {
-      if (lastNameFocusNode.hasFocus) {
-        setState(() {
-          isFocused = true;
-        });
-      } else {
-        setState(() {
-          isFocused = false;
-        });
-      }
+  void _onFocusChange() {
+    setState(() {
+      isFocused = firstNameFocusNode.hasFocus || lastNameFocusNode.hasFocus;
     });
   }
 
-  void handleSave() async {
-    if (_formKey.currentState!.validate()) {
-      setState(() {
-        isLoading = true;
-      });
+  @override
+  void dispose() {
+    _animationController.dispose();
+    firstNameController.dispose();
+    lastNameController.dispose();
+    firstNameFocusNode.dispose();
+    lastNameFocusNode.dispose();
+    super.dispose();
+  }
 
-      await Future.delayed(const Duration(seconds: 2));
+  Future<void> handleSave(BuildContext ctx) async {
+    if (!_formKey.currentState!.validate()) return;
 
-      setState(() {
-        isSaved = true;
-        isLoading = false;
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Row(
-            children: [
-              Icon(Icons.check_circle, color: Colors.green),
-              SizedBox(width: 10),
-              Text('Saved successfully'),
-            ],
-          ),
-        ),
+    final idStr = await SharedPrefsHelper.getUserId();
+    final userId = int.tryParse(idStr ?? '');
+    if (userId == null) {
+      ScaffoldMessenger.of(ctx).showSnackBar(
+        const SnackBar(content: Text("Erreur: ID utilisateur introuvable")),
       );
-
-      Future.delayed(const Duration(seconds: 3), () {
-        setState(() {
-          isSaved = false;
-        });
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const UserAccountApp()),
-        );
-      });
+      return;
     }
+
+    // On envoie d'abord le nom, puis le prénom
+    final bloc = ctx.read<UserUpdateBloc>();
+    bloc.add(UpdateNomEvent(userId, lastNameController.text.trim()));
+    bloc.add(UpdatePrenomEvent(userId, firstNameController.text.trim()));
   }
 
   InputDecoration customInputDecoration(String label, String? hint) {
@@ -141,8 +98,7 @@ class _NameUserState extends State<NameUser>
       hintText: hint,
       labelStyle: TextStyle(
         color: Colors.black87,
-        fontFamily:
-            GoogleFonts.poppins().fontFamily, // Appliquer la police Poppins
+        fontFamily: GoogleFonts.poppins().fontFamily,
       ),
       filled: true,
       fillColor: Colors.grey[100],
@@ -160,36 +116,67 @@ class _NameUserState extends State<NameUser>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      extendBodyBehindAppBar: true,
-      appBar: AppBar(
-        title: const Text(
-          'Edit Name',
-          style: TextStyle(color: Colors.black87),
-        ),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        foregroundColor: Colors.black87,
-      ),
-      body: Stack(
-        children: [
-          Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  Color(0xFF50C2C9),
-                  Color.fromARGB(255, 235, 237, 243),
-                  Color(0xFFE1F5F7),
+    return BlocConsumer<UserUpdateBloc, UserUpdateState>(
+      listener: (ctx, state) {
+        if (state is UserUpdateSuccess) {
+          ScaffoldMessenger.of(ctx).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.check_circle, color: Colors.green),
+                  const SizedBox(width: 10),
+                  Text(state.message),
                 ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
               ),
             ),
+          );
+          Future.delayed(const Duration(seconds: 2), () {
+            Navigator.pushReplacement(
+              ctx,
+              MaterialPageRoute(builder: (_) => const UserAccountPage()),
+            );
+          });
+        } else if (state is UserUpdateFailure) {
+          ScaffoldMessenger.of(ctx).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.error_outline, color: Colors.red),
+                  const SizedBox(width: 10),
+                  Text(state.error),
+                ],
+              ),
+            ),
+          );
+        }
+      },
+      builder: (ctx, state) {
+        final isLoading = state is UserUpdateLoading;
+        return Scaffold(
+          extendBodyBehindAppBar: true,
+          appBar: AppBar(
+            title: const Text('Edit Name', style: TextStyle(color: Colors.black87)),
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            foregroundColor: Colors.black87,
           ),
-          Center(
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                return SingleChildScrollView(
+          body: Stack(
+            children: [
+              Container(
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      Color(0xFF50C2C9),
+                      Color.fromARGB(255, 235, 237, 243),
+                      Color(0xFFE1F5F7),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                ),
+              ),
+              Center(
+                child: SingleChildScrollView(
                   padding: const EdgeInsets.all(20),
                   child: SlideTransition(
                     position: isFocused ? _stopAnimation : _offsetAnimation,
@@ -200,11 +187,7 @@ class _NameUserState extends State<NameUser>
                         color: Colors.white.withOpacity(0.9),
                         borderRadius: BorderRadius.circular(20),
                         boxShadow: const [
-                          BoxShadow(
-                            blurRadius: 12,
-                            color: Colors.black12,
-                            offset: Offset(0, 6),
-                          ),
+                          BoxShadow(blurRadius: 12, color: Colors.black12, offset: Offset(0, 6)),
                         ],
                       ),
                       child: Form(
@@ -212,121 +195,64 @@ class _NameUserState extends State<NameUser>
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            Hero(
-                              tag: 'salutation-hero',
-                              child: DropdownButtonFormField<String>(
-                                value: selectedSalutation,
-                                decoration:
-                                    customInputDecoration('Salutation', null),
-                                style: TextStyle(
-                                  fontFamily: GoogleFonts.poppins()
-                                      .fontFamily, // Appliquer la police Poppins
-                                  fontSize: 16,
-                                  color: Colors.black87,
-                                ),
-                                items: const [
-                                  DropdownMenuItem(
-                                      value: 'Not specified',
-                                      child: Text('Not specified')),
-                                  DropdownMenuItem(
-                                      value: 'Mr.', child: Text('Mr.')),
-                                  DropdownMenuItem(
-                                      value: 'Ms.', child: Text('Ms.')),
-                                ],
-                                onChanged: (value) {
-                                  setState(() => selectedSalutation = value);
-                                },
+                            DropdownButtonFormField<String>(
+                              value: selectedSalutation,
+                              decoration: customInputDecoration('Salutation', null),
+                              style: TextStyle(
+                                fontFamily: GoogleFonts.poppins().fontFamily,
+                                fontSize: 16,
+                                color: Colors.black87,
+                              ),
+                              items: const [
+                                DropdownMenuItem(value: 'Not specified', child: Text('Not specified')),
+                                DropdownMenuItem(value: 'Mr.', child: Text('Mr.')),
+                                DropdownMenuItem(value: 'Ms.', child: Text('Ms.')),
+                                DropdownMenuItem(value: 'Dr.', child: Text('Dr.')),
+                              ],
+                              onChanged: (v) => setState(() => selectedSalutation = v),
+                            ),
+                            const SizedBox(height: 16),
+                            TextFormField(
+                              controller: lastNameController,
+                              focusNode: lastNameFocusNode,
+                              decoration: customInputDecoration('Last Name', 'Enter your last name'),
+                              validator: (v) => v == null || v.isEmpty ? 'Please enter your last name' : null,
+                            ),
+                            const SizedBox(height: 16),
+                            TextFormField(
+                              controller: firstNameController,
+                              focusNode: firstNameFocusNode,
+                              decoration: customInputDecoration('First Name', 'Enter your first name'),
+                              validator: (v) => v == null || v.isEmpty ? 'Please enter your first name' : null,
+                            ),
+                            const SizedBox(height: 20),
+                            ElevatedButton.icon(
+                              icon: isLoading
+                                  ? const SizedBox(
+                                      width: 18,
+                                      height: 18,
+                                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                    )
+                                  : const Icon(Icons.save_alt_rounded),
+                              onPressed: isLoading ? null : () => handleSave(ctx),
+                              label: const Text("Save"),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF50C2C9),
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                               ),
                             ),
-                            const SizedBox(height: 20),
-                            Hero(
-                              tag: 'first-name-hero',
-                              child: TextFormField(
-                                controller: firstNameController,
-                                focusNode: firstNameFocusNode,
-                                decoration: customInputDecoration(
-                                  'First Name',
-                                  isPrivacyEnabled ? 'Hidden' : 'Barhoumi',
-                                ),
-                                validator: (value) =>
-                                    value == null || value.isEmpty
-                                        ? 'First name is required'
-                                        : null,
-                                keyboardType: TextInputType.name,
-                              ),
-                            ),
-                            const SizedBox(height: 20),
-                            Hero(
-                              tag: 'last-name-hero',
-                              child: TextFormField(
-                                controller: lastNameController,
-                                focusNode: lastNameFocusNode,
-                                decoration: customInputDecoration(
-                                  'Last Name',
-                                  isPrivacyEnabled ? 'Hidden' : 'Hechem',
-                                ),
-                                validator: (value) =>
-                                    value == null || value.isEmpty
-                                        ? 'Last name is required'
-                                        : null,
-                                keyboardType: TextInputType.name,
-                              ),
-                            ),
-                            const SizedBox(height: 20),
-                            CheckboxListTile(
-                              value: showInListings,
-                              onChanged: (value) => setState(
-                                  () => showInListings = value ?? true),
-                              title: const Text('Show in listings'),
-                              controlAffinity: ListTileControlAffinity.leading,
-                              activeColor: const Color(0xFF50C2C9),
-                            ),
-                            const SizedBox(height: 20),
-                            CheckboxListTile(
-                              value: isPrivacyEnabled,
-                              onChanged: (value) => setState(
-                                  () => isPrivacyEnabled = value ?? false),
-                              title: const Text('Enable Privacy (Hide Name)'),
-                              controlAffinity: ListTileControlAffinity.leading,
-                              activeColor: const Color(0xFF50C2C9),
-                            ),
-                            const SizedBox(height: 20),
-                            isLoading
-                                ? const Center(
-                                    child: CircularProgressIndicator(
-                                        color: Color(0xFF50C2C9)))
-                                : isSaved
-                                    ? Center(
-                                        child: Lottie.asset(
-                                            'assets/json/hh.json',
-                                            width: 150,
-                                            height: 150))
-                                    : ElevatedButton.icon(
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor:
-                                              const Color(0xFF50C2C9),
-                                          padding: const EdgeInsets.symmetric(
-                                              vertical: 16),
-                                          shape: RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(12)),
-                                        ),
-                                        onPressed: handleSave,
-                                        icon: const Icon(Icons.save),
-                                        label: const Text('Save',
-                                            style: TextStyle(fontSize: 16)),
-                                      ),
                           ],
                         ),
                       ),
                     ),
                   ),
-                );
-              },
-            ),
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 }

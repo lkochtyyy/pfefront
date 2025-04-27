@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:shared_preferences/shared_preferences.dart'; // Ajout de la bibliothèque SharedPreferences
 import '../blocs/auth/auth_bloc.dart';
 import '../blocs/auth/auth_event.dart';
 import '../blocs/auth/auth_state.dart';
@@ -59,6 +60,13 @@ class _LoginPageState extends State<LoginPage> {
                         setState(() => _isLoading = true);
                       } else if (state is LoginSuccess) {
                         setState(() => _isLoading = false);
+                        
+                        // Stocker l'ID et le token dans SharedPreferences
+                        _storeLoginData(state.userId, state.token);
+                        
+                        // Vérifier si les données sont bien stockées
+                        _checkStoredData();
+
                         Navigator.pushReplacement(
                           context,
                           MaterialPageRoute(
@@ -176,6 +184,27 @@ class _LoginPageState extends State<LoginPage> {
         ),
       ),
     );
+  }
+
+  // Fonction pour stocker l'ID et le token
+  Future<void> _storeLoginData(String userId, String token) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('userId', userId);
+    await prefs.setString('token', token);
+  }
+
+  // Fonction pour vérifier si les données sont stockées
+  Future<void> _checkStoredData() async {
+    final prefs = await SharedPreferences.getInstance();
+    final userId = prefs.getString('userId');
+    final token = prefs.getString('token');
+
+    if (userId != null && token != null) {
+      print('UserId: $userId');
+      print('Token: $token');
+    } else {
+      print('Pas de données stockées.');
+    }
   }
 
   Widget _buildTextField({

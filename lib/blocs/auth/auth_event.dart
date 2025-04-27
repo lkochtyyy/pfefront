@@ -25,3 +25,7 @@ class LoginUser extends AuthEvent {
   @override
   List<Object?> get props => [email, password];
 }
+class FetchUserProfile extends AuthEvent {
+  final String userId;
+  FetchUserProfile(this.userId);
+}

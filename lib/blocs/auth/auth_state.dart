@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import 'package:pfefront/data/models/user_model.dart';
 
 abstract class AuthState extends Equatable {
   @override
@@ -36,4 +37,15 @@ class AuthFailure extends AuthState {
   @override
   List<Object?> get props => [error];
 }
-
+class UserProfileLoading extends AuthState {}
+class UserProfileLoaded extends AuthState {
+  final UserModel user;
+  UserProfileLoaded(this.user);
+}
+class UserProfileError extends AuthState {
+  final String message;
+  UserProfileError(this.message);
+}
+class AccountDeleted extends AuthState {
+  // You can add additional properties if needed
+}
