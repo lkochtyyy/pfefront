@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:pfefront/blocs/announcement/car_announcement_bloc.dart';
 
 import 'package:pfefront/blocs/auth/auth_bloc.dart';
 import 'package:pfefront/blocs/auth/auth_event.dart';
@@ -186,31 +187,30 @@ class _EditProfilePageState extends State<EditProfilePage> {
                   }
                 },
               ),
-              buildOptionTile(
-                context,
-                Icons.notifications,
-                'Mes publications',
-                () async {
-                  final userId = await SharedPrefsHelper.getUserId();
-                  if (userId != null) {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => MyPubsPage(
-                         
-                          currentUserId: userId,
-                        ),
-                      ),
-                    );
-                  } else {
-                    // Handle the case where userId is null
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('User ID not found')),
-                    );
-                  }
-                },
-              ),
-
+             buildOptionTile(
+  context,
+  Icons.notifications,
+  'Mes publications',
+  () async {
+    final userId = await SharedPrefsHelper.getUserId();
+    if (userId != null) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => MyPubsPage(),
+        ),
+      ).then((_) {
+        // Recharger les annonces après le retour
+        context.read<CarAnnouncementBloc>().add(FetchAnnouncements());
+      });
+    } else {
+      // Handle the case where userId is null
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('User ID not found')),
+      );
+    }
+  },
+),
               const SizedBox(height: 40),
 
               // Email dynamiquement via BLoC

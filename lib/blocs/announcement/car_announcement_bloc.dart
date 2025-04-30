@@ -50,9 +50,9 @@ class CarAnnouncementBloc extends Bloc<CarAnnouncementEvent, CarAnnouncementStat
   ) async {
     emit(CarAnnouncementLoading());
     try {
-      await repository.deleteAnnouncement(event.id);
+      await repository.deleteAnnouncement(int.parse(event.id));
       emit(AnnouncementDeleted());
-      add(FetchAnnouncements()); // 🔄 Refresh après suppression
+      add(FetchVendorAnnouncement(int.parse(event.userId)));
     } catch (e) {
       emit(CarAnnouncementError(e.toString()));
     }

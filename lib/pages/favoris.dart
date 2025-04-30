@@ -215,7 +215,7 @@ class FavorisPage extends StatelessWidget {
               context,
               MaterialPageRoute(
                   builder: (context) =>
-                      const FeaturedCarsPage(userId: 'yourUserId')),
+                      const FeaturedCarsPage()),
             );
             break;
           case 2:

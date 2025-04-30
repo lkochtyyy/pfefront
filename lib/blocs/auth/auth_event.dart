@@ -29,3 +29,11 @@ class FetchUserProfile extends AuthEvent {
   final String userId;
   FetchUserProfile(this.userId);
 }
+class DeleteUser extends AuthEvent {
+  final String userId;
+
+  DeleteUser(this.userId);
+
+  @override
+  List<Object> get props => [userId];
+}

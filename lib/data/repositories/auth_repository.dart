@@ -80,6 +80,17 @@ class AuthRepository {
     throw Exception(errorData['message'] ?? 'Erreur lors de la récupération');
   }
 }
+Future<Map<String, dynamic>> deleteUser(String userId) async {
+  try {
+    print("debut ..... deletion");
+    final response = await http.delete(Uri.parse('$baseUrl/user/$userId'));
+    final responseData = jsonDecode(response.body);
+    return responseData; // Retourner la réponse du backend
+   
+  } catch (e) {
+    throw Exception('Erreur lors de la suppression de l\'utilisateur : ${e.toString()}');
+  }
+}
 
 
 

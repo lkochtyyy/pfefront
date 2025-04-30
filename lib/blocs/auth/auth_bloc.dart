@@ -11,6 +11,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<RegisterUser>(_onRegisterUser);
     on<LoginUser>(_onLoginUser);
     on<FetchUserProfile>(_onFetchUserProfile);
+    on<DeleteUser>(_onDeleteUser);
+
   }
 
   Future<void> _onRegisterUser(RegisterUser event, Emitter<AuthState> emit) async {
@@ -46,6 +48,15 @@ Future<void> _onLoginUser(LoginUser event, Emitter<AuthState> emit) async {
     emit(UserProfileError(e.toString()));
   }
 }
-}
 
-// class AuthBloc extends Bloc<AuthEvent, AuthState> {
+Future<void> _onDeleteUser(DeleteUser event, Emitter<AuthState> emit) async {
+  emit(AuthLoading());
+  try {
+    final response = await authRepository.deleteUser(event.userId);
+    final message = response['message']; // Message de succès du backend
+    emit(UserDeleted(message));
+  } catch (e) {
+    emit(AuthFailure('Erreur lors de la suppression de l\'utilisateur : ${e.toString()}'));
+  }
+}
+}

@@ -26,7 +26,7 @@ Future<CarAnnouncement> createAnnouncement(
   File imageFile,
 ) async {
   try {
-    print("🚀 Début de la création d'annonce...");
+   
 
     // Upload de l'image
     final imageUrl = await _uploadImage(imageFile);
@@ -34,7 +34,7 @@ Future<CarAnnouncement> createAnnouncement(
 
     // Appel API pour créer l'annonce avec l'image URL
     final response = await dio.post(
-      'http://10.0.2.2:3000/carAnnouncement/', // ⚠️ Retirer le slash "/" au début
+      'http://10.0.2.2:3000/carAnnouncement/', 
       data: announcement.copyWith(imageUrl: imageUrl).toJson(),
     );
 
@@ -79,8 +79,10 @@ Future<CarAnnouncement> createAnnouncement(
   // Supprimer une annonce
   Future<void> deleteAnnouncement(int id) async {
     try {
-      await dio.delete('/CarAnnouncement/$id');
+      await dio.delete('http://10.0.2.2:3000/carAnnouncement/$id');
+       print('✅ Annonce supprimée avec succès');
     } on DioException catch (e) {
+       print('❌ Erreur lors de la suppression : ${e.message}');
       throw Exception("Échec de la suppression: ${e.message}");
     }
   }

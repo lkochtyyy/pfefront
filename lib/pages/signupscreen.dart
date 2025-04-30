@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -7,16 +8,15 @@ import '../blocs/auth/auth_event.dart';
 import '../blocs/auth/auth_state.dart';
 import '../data/models/user_model.dart';
 import 'package:pfefront/pages/pagedacceuil.dart';
-
+import 'package:pfefront/pages/login.dart'; // Import de la page login
+import 'package:shared_preferences/shared_preferences.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
 
-
   @override
   _RegisterPageState createState() => _RegisterPageState();
 }
-
 
 class CustomTextField extends StatelessWidget {
   final TextEditingController controller;
@@ -26,7 +26,6 @@ class CustomTextField extends StatelessWidget {
   final bool isPassword;
   final Function(String)? onChanged;
   final TextStyle? style;
-
 
   const CustomTextField({
     super.key,
@@ -38,7 +37,6 @@ class CustomTextField extends StatelessWidget {
     this.onChanged,
     this.style,
   });
-
 
   @override
   Widget build(BuildContext context) {
@@ -73,7 +71,6 @@ class CustomTextField extends StatelessWidget {
   }
 }
 
-
 class _RegisterPageState extends State<RegisterPage> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _nomController = TextEditingController();
@@ -84,9 +81,9 @@ class _RegisterPageState extends State<RegisterPage> {
   final TextEditingController _confirmPasswordController =
       TextEditingController();
 
-
   bool _isPasswordMatch = true;
-
+  bool _acceptTerms = false;
+  bool _showTermsError = false;
 
   void _validatePasswords() {
     setState(() {
@@ -95,11 +92,18 @@ class _RegisterPageState extends State<RegisterPage> {
     });
   }
 
+  Future<void> _saveUserIdToSharedPreferences(String userId) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('userId', userId);
+  }
 
   void _registerUser(BuildContext context) {
-    if (_formKey.currentState!.validate() && _isPasswordMatch) {
+    setState(() {
+      _showTermsError = !_acceptTerms;
+    });
+
+    if (_formKey.currentState!.validate() && _isPasswordMatch && _acceptTerms) {
       final user = UserModel(
-        
         nom: _nomController.text,
         prenom: _prenomController.text,
         email: _emailController.text,
@@ -107,11 +111,9 @@ class _RegisterPageState extends State<RegisterPage> {
         password: _passwordController.text,
       );
 
-
       context.read<AuthBloc>().add(RegisterUser(user));
     }
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -136,19 +138,24 @@ class _RegisterPageState extends State<RegisterPage> {
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24.0),
                 child: BlocConsumer<AuthBloc, AuthState>(
-                  listener: (context, state) {
+                  listener: (context, state) async {
                     if (state is AuthSuccess) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                            content: Text(state.message),
-                            backgroundColor: Colors.green),
+                          content: Text(state.message),
+                          backgroundColor: Colors.green,
+                        ),
                       );
+
+                      // Sauvegarder le userId dans SharedPreferences
+                      await _saveUserIdToSharedPreferences(state.userId);
+
+                      // Afficher une animation de succès
                       showModalBottomSheet(
                         context: context,
                         shape: const RoundedRectangleBorder(
-                          borderRadius: BorderRadius.vertical(
-                            top: Radius.circular(30),
-                          ),
+                          borderRadius:
+                              BorderRadius.vertical(top: Radius.circular(30)),
                         ),
                         isScrollControlled: true,
                         builder: (_) => Padding(
@@ -160,7 +167,7 @@ class _RegisterPageState extends State<RegisterPage> {
                                   height: 150),
                               const SizedBox(height: 12),
                               Text(
-                                'Bienvenue dans CARZone !',
+                                'Inscription terminée avec succès!',
                                 style: GoogleFonts.poppins(
                                     fontSize: 18, fontWeight: FontWeight.w600),
                               ),
@@ -168,19 +175,22 @@ class _RegisterPageState extends State<RegisterPage> {
                           ),
                         ),
                       );
+
+                      // Rediriger vers la page d'accueil après un délai
                       Future.delayed(const Duration(seconds: 4), () {
                         Navigator.pushReplacement(
                           context,
                           MaterialPageRoute(
-                              builder: (context) =>
-                                  FeaturedCarsPage(userId: state.userId)),
+                            builder: (context) => const FeaturedCarsPage(),
+                          ),
                         );
                       });
                     } else if (state is AuthFailure) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                            content: Text(state.error),
-                            backgroundColor: Colors.red),
+                          content: Text(state.error),
+                          backgroundColor: Colors.red,
+                        ),
                       );
                     }
                   },
@@ -210,30 +220,26 @@ class _RegisterPageState extends State<RegisterPage> {
                             ),
                             const SizedBox(height: 20),
                             CustomTextField(
-                              controller: _nomController,
-                              hintText: "Nom",
-                              icon: Icons.person,
-                            ),
+                                controller: _nomController,
+                                hintText: "Nom",
+                                icon: Icons.person),
                             const SizedBox(height: 16),
                             CustomTextField(
-                              controller: _prenomController,
-                              hintText: "Prénom",
-                              icon: Icons.person,
-                            ),
+                                controller: _prenomController,
+                                hintText: "Prénom",
+                                icon: Icons.person),
                             const SizedBox(height: 16),
                             CustomTextField(
-                              controller: _emailController,
-                              hintText: "Email",
-                              inputType: TextInputType.emailAddress,
-                              icon: Icons.email,
-                            ),
+                                controller: _emailController,
+                                hintText: "Email",
+                                inputType: TextInputType.emailAddress,
+                                icon: Icons.email),
                             const SizedBox(height: 16),
                             CustomTextField(
-                              controller: _telController,
-                              hintText: "Téléphone",
-                              inputType: TextInputType.phone,
-                              icon: Icons.phone,
-                            ),
+                                controller: _telController,
+                                hintText: "Téléphone",
+                                inputType: TextInputType.phone,
+                                icon: Icons.phone),
                             const SizedBox(height: 16),
                             CustomTextField(
                               controller: _passwordController,
@@ -260,16 +266,45 @@ class _RegisterPageState extends State<RegisterPage> {
                                 ),
                               ),
                             const SizedBox(height: 20),
+                            Row(
+                              children: [
+                                Checkbox(
+                                  value: _acceptTerms,
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _acceptTerms = value!;
+                                      _showTermsError = false;
+                                    });
+                                  },
+                                ),
+                                Expanded(
+                                  child: Text(
+                                    "Je comfirme sur ces données.",
+                                    style: GoogleFonts.poppins(fontSize: 14),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            if (_showTermsError)
+                              const Align(
+                                alignment: Alignment.centerLeft,
+                                child: Padding(
+                                  padding: EdgeInsets.only(left: 12.0),
+                                  child: Text(
+                                    "Vous devez accepter les conditions.",
+                                    style: TextStyle(
+                                        color: Colors.red, fontSize: 12),
+                                  ),
+                                ),
+                              ),
+                            const SizedBox(height: 20),
                             SizedBox(
                               width: double.infinity,
                               child: ElevatedButton(
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(
-                                      0xFF50C2C9), // Couleur de fond
+                                  backgroundColor: const Color(0xFF50C2C9),
                                   shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(
-                                        30), // Coins arrondis similaires
-                                    // Bordure blanche
+                                    borderRadius: BorderRadius.circular(30),
                                   ),
                                   padding:
                                       const EdgeInsets.symmetric(vertical: 16),
@@ -290,6 +325,35 @@ class _RegisterPageState extends State<RegisterPage> {
                                       ),
                               ),
                             ),
+                            const SizedBox(height: 20),
+                            RichText(
+                              text: TextSpan(
+                                text: "Avez-vous déjà un compte ? ",
+                                style: GoogleFonts.poppins(
+                                  fontSize: 14,
+                                  color: Colors.black87,
+                                ),
+                                children: [
+                                  TextSpan(
+                                    text: "Se connecter",
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 14,
+                                      color: const Color(0xFF50C2C9),
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                    recognizer: TapGestureRecognizer()
+                                      ..onTap = () {
+                                        Navigator.pushReplacement(
+                                          context,
+                                          MaterialPageRoute(
+                                              builder: (context) =>
+                                                  const LoginPage()),
+                                        );
+                                      },
+                                  ),
+                                ],
+                              ),
+                            ),
                             const SizedBox(height: 30),
                           ],
                         ),
@@ -305,6 +369,3 @@ class _RegisterPageState extends State<RegisterPage> {
     );
   }
 }
-
-
-

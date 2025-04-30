@@ -2,20 +2,25 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:lottie/lottie.dart';
+import 'package:pfefront/pages/chatbot.dart';
 import 'package:pfefront/pages/favoris.dart';
 import 'package:pfefront/pages/messagerie.dart';
 import 'package:pfefront/pages/editprofile.dart';
+import 'package:pfefront/pages/notification.dart';
+import 'package:pfefront/pages/profilepicture.dart';
 import 'package:pfefront/pages/publier.dart';
 import 'package:pfefront/pages/search.dart';
 import 'package:pfefront/pages/filtrage.dart';
 import 'package:pfefront/pages/viewpub.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:pfefront/blocs/announcement/car_announcement_bloc.dart';
 import 'package:pfefront/data/models/announcement_model.dart';
 
 class FeaturedCarsPage extends StatefulWidget {
-  final String userId;
-  const FeaturedCarsPage({super.key, required this.userId});
+  
+  const FeaturedCarsPage({super.key, });
 
   @override
   State<FeaturedCarsPage> createState() => _FeaturedCarsPageState();
@@ -27,13 +32,24 @@ class _FeaturedCarsPageState extends State<FeaturedCarsPage> {
   String _searchText = '';
   bool isAscending = true;
 
-  @override
-  void initState() {
-    super.initState();
-    _speech = stt.SpeechToText();
-    // Trigger fetching announcements
+@override
+void didChangeDependencies() {
+  super.didChangeDependencies();
+   print('didChangeDependencies called in FeaturedCarsPage');
+  _loadUserIdAndFetchAnnouncements(); 
+}
+
+Future<void> _loadUserIdAndFetchAnnouncements() async {
+  final prefs = await SharedPreferences.getInstance();
+  final userId = prefs.getString('userId'); // Récupérer le userId
+
+  if (userId != null) {
+    // Déclencher le chargement des annonces avec le userId
     context.read<CarAnnouncementBloc>().add(FetchAnnouncements());
+  } else {
+    print('Erreur : userId non trouvé dans SharedPreferences.');
   }
+}
 
   void _startListening() async {
     bool available = await _speech.initialize();
@@ -149,6 +165,60 @@ class _FeaturedCarsPageState extends State<FeaturedCarsPage> {
               ],
             ),
           ),
+          Positioned(
+            bottom: 10,
+            right: 13,
+            child: GestureDetector(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  PageRouteBuilder(
+                    transitionDuration: const Duration(milliseconds: 600),
+                    pageBuilder: (_, __, ___) => const ChatBotSupportPage(),
+                    transitionsBuilder: (_, animation, __, child) {
+                      return FadeTransition(
+                        opacity: animation,
+                        child: ScaleTransition(
+                          scale: CurvedAnimation(
+                            parent: animation,
+                            curve: Curves.easeOutBack,
+                          ),
+                          child: child,
+                        ),
+                      );
+                    },
+                  ),
+                );
+              },
+              child: MouseRegion(
+                cursor: SystemMouseCursors.click,
+                child: AnimatedScale(
+                  scale: 1.0,
+                  duration: const Duration(milliseconds: 300),
+                  child: Hero(
+                    tag: 'chatbot_button',
+                    child: AnimatedOpacity(
+                      opacity: 1.0,
+                      duration: const Duration(milliseconds: 300),
+                      child: ClipOval(
+                        child: SizedBox(
+                          height: 85,
+                          width: 85,
+                          child: Lottie.asset(
+                            'assets/json/chatbot.json',
+                            fit: BoxFit.cover,
+                            repeat: true,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+
         ],
       ),
       bottomNavigationBar: _buildBottomNavigationBar(context),
@@ -173,7 +243,7 @@ class _FeaturedCarsPageState extends State<FeaturedCarsPage> {
     );
   }
 
-  Widget _buildAppBar() {
+    Widget _buildAppBar() {
     return AppBar(
       automaticallyImplyLeading: false,
       title: Text(
@@ -185,26 +255,51 @@ class _FeaturedCarsPageState extends State<FeaturedCarsPage> {
         ),
       ),
       centerTitle: false,
-      backgroundColor: Colors.transparent,
-      elevation: 0,
       actions: [
         IconButton(
-          icon: const Icon(Icons.person, color: Colors.black),
+          icon: const Icon(Icons.notifications, color: Colors.black),
           onPressed: () {
             Navigator.push(
               context,
               MaterialPageRoute(
-                  builder: (context) => const EditProfilePage()),
+                builder: (context) => const NotificationPage(),
+              ),
             );
           },
         ),
-        IconButton(
-          icon: const Icon(Icons.more_vert, color: Colors.black),
-          onPressed: () {},
+        ValueListenableBuilder<String?>(
+          valueListenable: UserAvatar.avatarPath,
+          builder: (context, avatar, _) {
+            return GestureDetector(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const EditProfilePage(),
+                  ),
+                );
+              },
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: CircleAvatar(
+                  radius: 18,
+                  backgroundColor: Colors.grey.shade300,
+                  backgroundImage: avatar != null ? AssetImage(avatar) : null,
+                  child: avatar == null
+                      ? const Icon(Icons.person, color: Colors.black)
+                      : null,
+                ),
+              ),
+            );
+          },
         ),
       ],
+      backgroundColor: Colors.transparent,
+      elevation: 0,
     );
   }
+
+
 
   Widget _buildSearchField(BuildContext context) {
     return Padding(

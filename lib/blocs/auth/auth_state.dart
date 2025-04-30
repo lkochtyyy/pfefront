@@ -46,6 +46,11 @@ class UserProfileError extends AuthState {
   final String message;
   UserProfileError(this.message);
 }
-class AccountDeleted extends AuthState {
-  // You can add additional properties if needed
+class UserDeleted extends AuthState {
+  final String message;
+
+  UserDeleted(this.message);
+
+  @override
+  List<Object> get props => [message];
 }

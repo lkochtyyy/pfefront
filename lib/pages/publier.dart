@@ -143,7 +143,7 @@ class _CreateEditCarPageState extends State<PublierAnnoncePage> {
         // Envoyer l'événement au Bloc
         context.read<CarAnnouncementBloc>().add(
               CreateAnnouncement(
-                announcement: announcement, imageFile: selectedImage!,
+                announcement: announcement, imageFile: selectedImage!, userId : userId,
               ),
             );
       } catch (e) {

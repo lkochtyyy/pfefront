@@ -4,14 +4,15 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:lottie/lottie.dart';
 import 'package:pfefront/blocs/announcement/car_announcement_bloc.dart';
 import 'package:pfefront/data/models/announcement_model.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'publier.dart';
 
 class MyPubsPage extends StatefulWidget {
-  final String currentUserId; // ID de l'utilisateur connecté
+ 
 
   const MyPubsPage({
     super.key,
-    required this.currentUserId,
+   
   });
 
   @override
@@ -19,18 +20,26 @@ class MyPubsPage extends StatefulWidget {
 }
 
 class _MyPubsPageState extends State<MyPubsPage> {
-  @override
-  void initState() {
-    super.initState();
-    final userId = int.tryParse(widget.currentUserId); // Convertir en entier si nécessaire
-    if (userId != null) {
-      context.read<CarAnnouncementBloc>().add(FetchVendorAnnouncement(userId));
-    } else {
-      print('Erreur : userId est null ou invalide.');
-    }
-  }
+ @override
+void initState() {
+  super.initState();
 
-  void _showDeleteDialog(int id) {
+  _loadUserIdAndFetchAnnouncements(); // Charger le userId et déclencher le chargement des annonces
+}
+
+Future<void> _loadUserIdAndFetchAnnouncements() async {
+  final prefs = await SharedPreferences.getInstance();
+  final userId = prefs.getString('userId'); // Récupérer le userId
+
+  if (userId != null) {
+    // Déclencher le chargement des annonces avec le userId
+    context.read<CarAnnouncementBloc>().add(FetchVendorAnnouncement(int.parse(userId)));
+  } else {
+    print('Erreur : userId non trouvé dans SharedPreferences.');
+  }
+}
+
+  void _showDeleteDialog(int id, String userId) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -55,7 +64,7 @@ class _MyPubsPageState extends State<MyPubsPage> {
             ),
             TextButton(
               onPressed: () {
-                context.read<CarAnnouncementBloc>().add(DeleteAnnouncement(id));
+                context.read<CarAnnouncementBloc>().add(DeleteAnnouncement(id.toString(), userId));
                 Navigator.of(context).pop(); // Fermer le dialogue
               },
               child: Text(
@@ -215,9 +224,15 @@ class _MyPubsPageState extends State<MyPubsPage> {
                                                 ),
                                                 const SizedBox(width: 8),
                                                 TextButton.icon(
-                                                  onPressed: () {
+                                                  onPressed: () async {
                                                     if (announcement.id != null) {
-                                                      _showDeleteDialog(announcement.id!);
+                                                      final prefs = await SharedPreferences.getInstance();
+                                                      final userId = prefs.getString('userId');
+                                                      if (userId != null) {
+                                                        _showDeleteDialog(announcement.id!, userId);
+                                                      } else {
+                                                        print('Erreur : userId non trouvé dans SharedPreferences.');
+                                                      }
                                                     } else {
                                                       print('Erreur : ID de l\'annonce est null.');
                                                     }

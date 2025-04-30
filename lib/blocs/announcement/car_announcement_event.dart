@@ -7,15 +7,19 @@ abstract class CarAnnouncementEvent extends Equatable {
   List<Object> get props => [];
 }
 
-class FetchAnnouncements extends CarAnnouncementEvent {}
+class FetchAnnouncements extends CarAnnouncementEvent {
+  
+}
 
 class CreateAnnouncement extends CarAnnouncementEvent {
   final CarAnnouncement announcement;
   final File imageFile;
+  final String userId; 
 
   const CreateAnnouncement({
     required this.announcement,
     required this.imageFile,
+    required this.userId,
   });
 
   @override
@@ -23,12 +27,13 @@ class CreateAnnouncement extends CarAnnouncementEvent {
 }
 
 class DeleteAnnouncement extends CarAnnouncementEvent {
-  final int id;
+  final String id;
+  final String userId;
 
-  const DeleteAnnouncement(this.id);
+  DeleteAnnouncement(this.id, this.userId);
 
   @override
-  List<Object> get props => [id];
+  List<Object> get props => [id, userId];
 }
 class FetchVendorAnnouncement extends CarAnnouncementEvent {
   final int vendorId;
