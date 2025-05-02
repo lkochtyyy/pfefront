@@ -50,3 +50,7 @@ class VendorAnnouncementsError extends CarAnnouncementState {
   @override
   List<Object> get props => [message]; // Ajout pour Equatable
 }
+class AnnouncementUpdated extends CarAnnouncementState {
+  @override
+  List<Object> get props => [];
+}

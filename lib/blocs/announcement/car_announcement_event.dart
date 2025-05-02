@@ -40,3 +40,11 @@ class FetchVendorAnnouncement extends CarAnnouncementEvent {
 
   FetchVendorAnnouncement(this.vendorId);
 }
+class UpdateAnnouncement extends CarAnnouncementEvent {
+  final Map<String, dynamic> updatedData;
+
+  UpdateAnnouncement(this.updatedData);
+
+  @override
+  List<Object> get props => [updatedData];
+}

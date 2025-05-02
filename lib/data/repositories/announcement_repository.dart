@@ -122,5 +122,17 @@ Future<List<CarAnnouncement>> fetchByVendor(int vendorId) async {
     throw Exception("Erreur lors de la récupération des annonces : ${e.message}");
   }
 }
+Future<void> updateAnnouncement(Map<String, dynamic> updatedData) async {
+  try {
+    await dio.put(
+      'http://10.0.2.2:3000/carAnnouncement/${updatedData['id']}',
+      data: updatedData,
+    );
+    print('✅ Annonce mise à jour avec succès');
+  } on DioException catch (e) {
+    print('❌ Erreur lors de la mise à jour : ${e.message}');
+    throw Exception("Échec de la mise à jour : ${e.message}");
+  }
+}
 
 }

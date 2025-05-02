@@ -54,6 +54,7 @@ dependencies:
   dio: ^5.8.0+1
   flutter_rating_bar: ^4.0.1
   material_design_icons_flutter: ^7.0.7296
+  animate_do: ^4.2.0
 
 dev_dependencies:
   flutter_test:

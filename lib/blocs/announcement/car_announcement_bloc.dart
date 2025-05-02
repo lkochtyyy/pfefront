@@ -14,7 +14,8 @@ class CarAnnouncementBloc extends Bloc<CarAnnouncementEvent, CarAnnouncementStat
     on<FetchAnnouncements>(_onFetch);
     on<CreateAnnouncement>(_onCreate);
     on<DeleteAnnouncement>(_onDelete);
-    on<FetchVendorAnnouncement>(_onFetchVendor); // 💡 Ajouté proprement ici
+    on<FetchVendorAnnouncement>(_onFetchVendor); 
+    on<UpdateAnnouncement>(_onUpdate);
   }
 
   Future<void> _onFetch(
@@ -68,6 +69,19 @@ class CarAnnouncementBloc extends Bloc<CarAnnouncementEvent, CarAnnouncementStat
     emit(VendorAnnouncementsLoaded(annonces)); // Use the list directly
   } catch (e) {
     emit(VendorAnnouncementsError(e.toString()));
+  }
+}
+Future<void> _onUpdate(
+  UpdateAnnouncement event,
+  Emitter<CarAnnouncementState> emit,
+) async {
+  emit(CarAnnouncementLoading());
+  try {
+    await repository.updateAnnouncement(event.updatedData);
+    emit(AnnouncementUpdated());
+    add(FetchVendorAnnouncement(event.updatedData['userId']));
+  } catch (e) {
+    emit(CarAnnouncementError('Erreur lors de la mise à jour : ${e.toString()}'));
   }
 }
 }

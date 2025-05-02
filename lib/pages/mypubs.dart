@@ -8,36 +8,30 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'publier.dart';
 
 class MyPubsPage extends StatefulWidget {
- 
-
-  const MyPubsPage({
-    super.key,
-   
-  });
+  const MyPubsPage({super.key});
 
   @override
   State<MyPubsPage> createState() => _MyPubsPageState();
 }
 
 class _MyPubsPageState extends State<MyPubsPage> {
- @override
-void initState() {
-  super.initState();
-
-  _loadUserIdAndFetchAnnouncements(); // Charger le userId et déclencher le chargement des annonces
-}
-
-Future<void> _loadUserIdAndFetchAnnouncements() async {
-  final prefs = await SharedPreferences.getInstance();
-  final userId = prefs.getString('userId'); // Récupérer le userId
-
-  if (userId != null) {
-    // Déclencher le chargement des annonces avec le userId
-    context.read<CarAnnouncementBloc>().add(FetchVendorAnnouncement(int.parse(userId)));
-  } else {
-    print('Erreur : userId non trouvé dans SharedPreferences.');
+  @override
+  void initState() {
+    super.initState();
+    _loadUserIdAndFetchAnnouncements(); // Charger le userId et déclencher le chargement des annonces
   }
-}
+
+  Future<void> _loadUserIdAndFetchAnnouncements() async {
+    final prefs = await SharedPreferences.getInstance();
+    final userId = prefs.getString('userId'); // Récupérer le userId
+
+    if (userId != null) {
+      // Déclencher le chargement des annonces avec le userId
+      context.read<CarAnnouncementBloc>().add(FetchVendorAnnouncement(int.parse(userId)));
+    } else {
+      print('Erreur : userId non trouvé dans SharedPreferences.');
+    }
+  }
 
   void _showDeleteDialog(int id, String userId) {
     showDialog(
@@ -206,9 +200,8 @@ Future<void> _loadUserIdAndFetchAnnouncements() async {
                                                       ),
                                                     );
                                                     if (updatedData != null) {
-                                                      setState(() {
-                                                        // Mettre à jour l'annonce si nécessaire
-                                                      });
+                                                      // Recharger les annonces après modification
+                                                      _loadUserIdAndFetchAnnouncements();
                                                     }
                                                   },
                                                   icon: const Icon(

@@ -3,6 +3,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lottie/lottie.dart';
+import 'package:pfefront/blocs/favoris/favori_bloc.dart';
+import 'package:pfefront/blocs/favoris/favori_event.dart';
+import 'package:pfefront/blocs/favoris/favori_state.dart';
 import 'package:pfefront/pages/chatbot.dart';
 import 'package:pfefront/pages/favoris.dart';
 import 'package:pfefront/pages/messagerie.dart';
@@ -19,8 +22,7 @@ import 'package:pfefront/blocs/announcement/car_announcement_bloc.dart';
 import 'package:pfefront/data/models/announcement_model.dart';
 
 class FeaturedCarsPage extends StatefulWidget {
-  
-  const FeaturedCarsPage({super.key, });
+  const FeaturedCarsPage({super.key});
 
   @override
   State<FeaturedCarsPage> createState() => _FeaturedCarsPageState();
@@ -31,183 +33,225 @@ class _FeaturedCarsPageState extends State<FeaturedCarsPage> {
   bool _isListening = false;
   String _searchText = '';
   bool isAscending = true;
+  List<int> favorisIds = [];
+  bool isFavorisLoading = true;
 
-@override
-void didChangeDependencies() {
-  super.didChangeDependencies();
-   print('didChangeDependencies called in FeaturedCarsPage');
-  _loadUserIdAndFetchAnnouncements(); 
-}
-
-Future<void> _loadUserIdAndFetchAnnouncements() async {
-  final prefs = await SharedPreferences.getInstance();
-  final userId = prefs.getString('userId'); // Récupérer le userId
-
-  if (userId != null) {
-    // Déclencher le chargement des annonces avec le userId
-    context.read<CarAnnouncementBloc>().add(FetchAnnouncements());
-  } else {
-    print('Erreur : userId non trouvé dans SharedPreferences.');
-  }
-}
-
-  void _startListening() async {
-    bool available = await _speech.initialize();
-    if (available) {
-      setState(() => _isListening = true);
-      _speech.listen(onResult: (result) {
-        setState(() => _searchText = result.recognizedWords);
-      });
-    }
+  void _startListening() {
+    setState(() {
+      _isListening = true;
+    });
+    // Add logic to start speech recognition here
   }
 
   void _stopListening() {
-    setState(() => _isListening = false);
-    _speech.stop();
+    setState(() {
+      _isListening = false;
+    });
+    // Add logic to stop speech recognition here
   }
 
-  void _showFilterSheet() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) {
-        return FilterBottomSheet(
-          onApply: ({
-            required String brand,
-            required String condition,
-            required RangeValues priceRange,
-            required String rating,
-            required String sort,
-          }) {
-            print(
-                "Brand: $brand, Condition: $condition, Rating: $rating, Sort: $sort, Price Range: $priceRange");
-          },
-        );
-      },
-    );
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _loadUserIdAndFetchAnnouncements(); // Fetch announcements and favorites
+  }
+
+  Future<void> _loadUserIdAndFetchAnnouncements() async {
+    final prefs = await SharedPreferences.getInstance();
+    final userId = prefs.getString('userId'); // Retrieve userId
+
+    if (userId != null) {
+      // Fetch user's favorites
+      context.read<FavoriBloc>().add(GetFavoris(int.parse(userId)));
+
+      // Fetch car announcements
+      context.read<CarAnnouncementBloc>().add(FetchAnnouncements());
+    } else {
+      print('Error: userId not found in SharedPreferences.');
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Stack(
-        children: [
-          _buildAnimatedBackground(),
-          SafeArea(
-            child: Column(
-              children: [
-                _buildAppBar(),
-                const SizedBox(height: 20),
-                _buildSearchField(context),
-                const SizedBox(height: 20),
-                _buildFeaturedSection(),
-                const SizedBox(height: 16),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: BlocBuilder<CarAnnouncementBloc, CarAnnouncementState>(
-                      builder: (context, state) {
-                        if (state is CarAnnouncementLoading) {
-                          return const Center(child: CircularProgressIndicator());
-                        } else if (state is CarAnnouncementLoaded) {
-                          // filter by search text
-                          final List<CarAnnouncement> list = state.announcements
-                              .where((a) => a.title
-                                  .toLowerCase()
-                                  .contains(_searchText.toLowerCase()))
-                              .toList();
-                          return GridView.builder(
-                            padding: const EdgeInsets.only(bottom: 20),
-                            gridDelegate:
-                                const SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 2,
-                              crossAxisSpacing: 10,
-                              mainAxisSpacing: 10,
-                              childAspectRatio: 0.75,
-                            ),
-                            itemCount: list.length,
-                            itemBuilder: (context, index) {
-                              final car = list[index];
-                              final imageUrl = car.imageUrl;
-                              return CarCard(
-                                data: {
-                                  'id': car.id,
-                                  'title': car.title,
-                                  'price': car.price,
-                                  'status': car.carCondition,
-                                  'image': imageUrl,
-                                },
-                                onTap: () {
-                                  print(car.id);
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => CarDetailPage(annonceId: '${car.id}'),
-                                       
+    return BlocListener<FavoriBloc, FavoriState>(
+      listener: (context, state) {
+        if (state is FavoriLoaded) {
+          setState(() {
+            favorisIds = state.favoris.map((f) => f.carId).toList();
+            isFavorisLoading = false; // Les favoris sont chargés
+          });
+        } else if (state is FavoriLoading) {
+          setState(() {
+            isFavorisLoading = true; 
+            print("te7cheeeeeee");
+          });
+        }
+      },
+      child: Scaffold(
+        body: Stack(
+          children: [
+            _buildAnimatedBackground(),
+            SafeArea(
+              child: Column(
+                children: [
+                  _buildAppBar(),
+                  const SizedBox(height: 20),
+                  _buildSearchField(context),
+                  const SizedBox(height: 20),
+                  _buildFeaturedSection(),
+                  const SizedBox(height: 16),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: BlocBuilder<CarAnnouncementBloc, CarAnnouncementState>(
+                        builder: (context, state) {
+                          if (isFavorisLoading) {
+                            return const Center(child: CircularProgressIndicator());
+                          }
+
+                          if (state is CarAnnouncementLoading) {
+                            return const Center(child: CircularProgressIndicator());
+                          } else if (state is CarAnnouncementLoaded) {
+                            print("Search Text: $_searchText");
+print("Announcements: ${state.announcements.map((a) => a.title).toList()}");
+                            // Filter announcements by search text
+                            final List<CarAnnouncement> list = state.announcements
+                                .where((a) => a.title
+                                    .toLowerCase()
+                                    .contains(_searchText.toLowerCase()))
+                                .toList();
+                            return GridView.builder(
+                              padding: const EdgeInsets.only(bottom: 20),
+                              gridDelegate:
+                                  const SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: 2,
+                                crossAxisSpacing: 10,
+                                mainAxisSpacing: 10,
+                                childAspectRatio: 0.75,
+                              ),
+                              itemCount: list.length,
+                              itemBuilder: (context, index) {
+                                final car = list[index];
+                                final imageUrl = car.imageUrl;
+
+                                return Stack(
+                                  children: [
+                                    CarCard(
+                                      data: {
+                                        'id': car.id,
+                                        'title': car.title,
+                                        'price': car.price,
+                                        'status': car.carCondition,
+                                        'image': imageUrl,
+                                      },
+                                      onTap: () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) => CarDetailPage(annonceId: '${car.id}'),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                    Positioned(
+                                      top: 10,
+                                      right: 10,
+                                      child: IconButton(
+                                        icon: Icon(
+                                          favorisIds.contains(car.id)
+                                              ? Icons.favorite // ❤️ filled
+                                              : Icons.favorite_border, // 🤍 empty
+                                          color: const Color.fromARGB(255, 250, 2, 2),
+                                        ),
+                                        onPressed: () async {
+                                          final prefs = await SharedPreferences.getInstance();
+                                          final userId = prefs.getString('userId');
+                                          if (userId != null) {
+                                            final isFavori = favorisIds.contains(car.id);
+                                            if (!isFavori) {
+                                              context.read<FavoriBloc>().add(
+                                                AjouterFavori(carId: car.id!, userId: int.parse(userId)),
+                                              );
+                                              setState(() => favorisIds.add(car.id!));
+                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                const SnackBar(content: Text('Added to favorites')),
+                                              );
+                                            } else {
+                                              context.read<FavoriBloc>().add(
+                                                SupprimerFavori(carId: car.id!, userId: int.parse(userId)),
+                                              );
+                                              setState(() => favorisIds.remove(car.id!));
+                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                const SnackBar(content: Text('Removed from favorites')),
+                                              );
+                                            }
+                                          } else {
+                                            ScaffoldMessenger.of(context).showSnackBar(
+                                              const SnackBar(content: Text('User not identified')),
+                                            );
+                                          }
+                                        },
                                       ),
-                                    
-                                  );
-                                },
-                              );
-                            },
-                          );            
-                        } else if (state is CarAnnouncementError) {
-                          return Center(child: Text('Erreur: ${state.error}'));
-                        }
-                        return const SizedBox();
-                      },
+                                    ),
+                                  ],
+                                );
+                              },
+                            );
+                          } else if (state is CarAnnouncementError) {
+                            return Center(child: Text('Error: ${state.error}'));
+                          }
+                          return const SizedBox();
+                        },
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-          Positioned(
-            bottom: 10,
-            right: 13,
-            child: GestureDetector(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  PageRouteBuilder(
-                    transitionDuration: const Duration(milliseconds: 600),
-                    pageBuilder: (_, __, ___) => const ChatBotSupportPage(),
-                    transitionsBuilder: (_, animation, __, child) {
-                      return FadeTransition(
-                        opacity: animation,
-                        child: ScaleTransition(
-                          scale: CurvedAnimation(
-                            parent: animation,
-                            curve: Curves.easeOutBack,
+            Positioned(
+              bottom: 10,
+              right: 13,
+              child: GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    PageRouteBuilder(
+                      transitionDuration: const Duration(milliseconds: 600),
+                      pageBuilder: (_, __, ___) => const ChatBotSupportPage(),
+                      transitionsBuilder: (_, animation, __, child) {
+                        return FadeTransition(
+                          opacity: animation,
+                          child: ScaleTransition(
+                            scale: CurvedAnimation(
+                              parent: animation,
+                              curve: Curves.easeOutBack,
+                            ),
+                            child: child,
                           ),
-                          child: child,
-                        ),
-                      );
-                    },
-                  ),
-                );
-              },
-              child: MouseRegion(
-                cursor: SystemMouseCursors.click,
-                child: AnimatedScale(
-                  scale: 1.0,
-                  duration: const Duration(milliseconds: 300),
-                  child: Hero(
-                    tag: 'chatbot_button',
-                    child: AnimatedOpacity(
-                      opacity: 1.0,
-                      duration: const Duration(milliseconds: 300),
-                      child: ClipOval(
-                        child: SizedBox(
-                          height: 85,
-                          width: 85,
-                          child: Lottie.asset(
-                            'assets/json/chatbot.json',
-                            fit: BoxFit.cover,
-                            repeat: true,
+                        );
+                      },
+                    ),
+                  );
+                },
+                child: MouseRegion(
+                  cursor: SystemMouseCursors.click,
+                  child: AnimatedScale(
+                    scale: 1.0,
+                    duration: const Duration(milliseconds: 300),
+                    child: Hero(
+                      tag: 'chatbot_button',
+                      child: AnimatedOpacity(
+                        opacity: 1.0,
+                        duration: const Duration(milliseconds: 300),
+                        child: ClipOval(
+                          child: SizedBox(
+                            height: 85,
+                            width: 85,
+                            child: Lottie.asset(
+                              'assets/json/chatbot.json',
+                              fit: BoxFit.cover,
+                              repeat: true,
+                            ),
                           ),
                         ),
                       ),
@@ -216,12 +260,10 @@ Future<void> _loadUserIdAndFetchAnnouncements() async {
                 ),
               ),
             ),
-          ),
-
-
-        ],
+          ],
+        ),
+        bottomNavigationBar: _buildBottomNavigationBar(context),
       ),
-      bottomNavigationBar: _buildBottomNavigationBar(context),
     );
   }
 
@@ -243,7 +285,7 @@ Future<void> _loadUserIdAndFetchAnnouncements() async {
     );
   }
 
-    Widget _buildAppBar() {
+  Widget _buildAppBar() {
     return AppBar(
       automaticallyImplyLeading: false,
       title: Text(
@@ -298,8 +340,6 @@ Future<void> _loadUserIdAndFetchAnnouncements() async {
       elevation: 0,
     );
   }
-
-
 
   Widget _buildSearchField(BuildContext context) {
     return Padding(
@@ -368,7 +408,7 @@ Future<void> _loadUserIdAndFetchAnnouncements() async {
               ),
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             ),
-            onPressed: _showFilterSheet,
+            onPressed: () => _showFilterSheet(),
             icon: const Icon(Icons.filter_alt_outlined, size: 18),
             label: Text(
               "Filter",
@@ -380,6 +420,37 @@ Future<void> _loadUserIdAndFetchAnnouncements() async {
           ),
         ],
       ),
+    );
+  }
+
+  void _showFilterSheet() {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Filter Options',
+                style: GoogleFonts.poppins(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 10),
+              // Add filter options here
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                },
+                child: const Text('Apply Filters'),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -524,8 +595,7 @@ class CarCard extends StatelessWidget {
                           color: Colors.white.withOpacity(0.8),
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(Icons.star, 
-                            color: Colors.amber, size: 18),
+                       
                       ),
                     ),
                   ],
