@@ -4,15 +4,12 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:lottie/lottie.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
-
 class ChatBotSupportPage extends StatefulWidget {
   const ChatBotSupportPage({super.key});
-
 
   @override
   State<ChatBotSupportPage> createState() => _ChatBotSupportPageState();
 }
-
 
 class _ChatBotSupportPageState extends State<ChatBotSupportPage> {
   final TextEditingController _controller = TextEditingController();
@@ -22,14 +19,12 @@ class _ChatBotSupportPageState extends State<ChatBotSupportPage> {
   ];
   bool _isBotTyping = false;
 
-
   final List<String> _quickReplies = [
     "Problème de paiement",
     "Je veux annuler",
     "Mon compte a été bloqué",
     "Comment modifier une annonce ?",
   ];
-
 
   void _scrollToBottom() {
     Future.delayed(300.ms, () {
@@ -43,42 +38,34 @@ class _ChatBotSupportPageState extends State<ChatBotSupportPage> {
     });
   }
 
-
   void _simulateBotResponse(String userText) async {
     setState(() {
       _isBotTyping = true;
     });
     _scrollToBottom();
 
-
     await Future.delayed(1500.ms); // délai simulé
-
 
     setState(() {
       _isBotTyping = false;
       _messages.add({'sender': 'bot', 'text': 'Merci pour votre message ! 😊'});
     });
 
-
     _scrollToBottom();
   }
-
 
   void _sendMessage(String? optionalText) {
     final text = optionalText ?? _controller.text.trim();
     if (text.isEmpty) return;
 
-
     setState(() {
       _messages.add({'sender': 'user', 'text': text});
     });
-
 
     _controller.clear();
     _simulateBotResponse(text);
     _scrollToBottom();
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -96,7 +83,6 @@ class _ChatBotSupportPageState extends State<ChatBotSupportPage> {
               ),
             ),
           ),
-
 
           SafeArea(
             child: Column(
@@ -138,9 +124,7 @@ class _ChatBotSupportPageState extends State<ChatBotSupportPage> {
                   ),
                 ),
 
-
                 const SizedBox(height: 16),
-
 
                 // Liste des messages
                 Expanded(
@@ -171,10 +155,8 @@ class _ChatBotSupportPageState extends State<ChatBotSupportPage> {
                         ).animate().fade().slideX(begin: -0.2);
                       }
 
-
                       final msg = _messages[index];
                       final isUser = msg['sender'] == 'user';
-
 
                       return Padding(
                         padding: const EdgeInsets.symmetric(vertical: 4.0),
@@ -252,7 +234,6 @@ class _ChatBotSupportPageState extends State<ChatBotSupportPage> {
                   ),
                 ),
 
-
                 // Suggestions rapides
                 if (!_isBotTyping)
                   Container(
@@ -278,7 +259,6 @@ class _ChatBotSupportPageState extends State<ChatBotSupportPage> {
                       }).toList(),
                     ),
                   ),
-
 
                 // Zone de saisie
                 Padding(
@@ -336,6 +316,3 @@ class _ChatBotSupportPageState extends State<ChatBotSupportPage> {
     );
   }
 }
-
-
-

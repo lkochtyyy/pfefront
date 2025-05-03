@@ -1,0 +1,2 @@
+C:/pushh/pfefront/android/app/.cxx/Debug/3o6x6a21/x86/CMakeFiles/edit_cache.dir
+C:/pushh/pfefront/android/app/.cxx/Debug/3o6x6a21/x86/CMakeFiles/rebuild_cache.dir

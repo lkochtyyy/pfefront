@@ -16,14 +16,15 @@ import 'package:pfefront/data/repositories/user_repository.dart';
 void main() {
   final AuthRepository authRepository = AuthRepository();
   final ForgetpassRepository forgetpassword = ForgetpassRepository();
-  final CarAnnouncementRepository announcementRepository = CarAnnouncementRepository(dio: Dio());
+  final CarAnnouncementRepository announcementRepository =
+      CarAnnouncementRepository(dio: Dio());
   final FavoriRepository favoriRepository = FavoriRepository();
 
   runApp(MyApp(
     authRepository: authRepository,
     forgetpassword: forgetpassword,
-    announcementRepository: announcementRepository, 
-    favoriRepository: favoriRepository, 
+    announcementRepository: announcementRepository,
+    favoriRepository: favoriRepository,
   ));
 }
 
@@ -42,39 +43,43 @@ class MyApp extends StatelessWidget {
   });
 
   @override
-Widget build(BuildContext context) {
-  return MultiRepositoryProvider(
-    providers: [
-      RepositoryProvider<AuthRepository>.value(value: authRepository),
-      RepositoryProvider<ForgetpassRepository>.value(value: forgetpassword),
-      RepositoryProvider<CarAnnouncementRepository>.value(value: announcementRepository),
-      RepositoryProvider<FavoriRepository>.value(value: favoriRepository), 
-    ],
-    child: MultiBlocProvider(
+  Widget build(BuildContext context) {
+    return MultiRepositoryProvider(
       providers: [
-        BlocProvider<AuthBloc>(
-          create: (context) => AuthBloc(authRepository: authRepository),
-        ),
-        BlocProvider<ResetPasswordBloc>(
-          create: (context) => ResetPasswordBloc(forgetpassword: forgetpassword),
-        ),
-        BlocProvider<CarAnnouncementBloc>(
-          create: (context) => CarAnnouncementBloc(repository: announcementRepository),
-        ),
-        BlocProvider<UserUpdateBloc>(
-          create: (context) => UserUpdateBloc(UserRepository()),
-        ),
-        BlocProvider<FavoriBloc>(
-          create: (context) => FavoriBloc(
-            context.read<FavoriRepository>(), // ✅ On utilise le contexte ici proprement
-          ),
-        ),
+        RepositoryProvider<AuthRepository>.value(value: authRepository),
+        RepositoryProvider<ForgetpassRepository>.value(value: forgetpassword),
+        RepositoryProvider<CarAnnouncementRepository>.value(
+            value: announcementRepository),
+        RepositoryProvider<FavoriRepository>.value(value: favoriRepository),
       ],
-      child: MaterialApp(
-        debugShowCheckedModeBanner: false,
-        home: const OnboardingScreen(),
+      child: MultiBlocProvider(
+        providers: [
+          BlocProvider<AuthBloc>(
+            create: (context) => AuthBloc(authRepository: authRepository),
+          ),
+          BlocProvider<ResetPasswordBloc>(
+            create: (context) =>
+                ResetPasswordBloc(forgetpassword: forgetpassword),
+          ),
+          BlocProvider<CarAnnouncementBloc>(
+            create: (context) =>
+                CarAnnouncementBloc(repository: announcementRepository),
+          ),
+          BlocProvider<UserUpdateBloc>(
+            create: (context) => UserUpdateBloc(UserRepository()),
+          ),
+          BlocProvider<FavoriBloc>(
+            create: (context) => FavoriBloc(
+              context.read<
+                  FavoriRepository>(), // ✅ On utilise le contexte ici proprement
+            ),
+          ),
+        ],
+        child: MaterialApp(
+          debugShowCheckedModeBanner: false,
+          home: const OnboardingScreen(),
+        ),
       ),
-    ),
-  );
-}
+    );
+  }
 }

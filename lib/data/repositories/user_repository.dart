@@ -2,7 +2,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 
 class UserRepository {
-  final String baseUrl = "http://10.0.2.2:3000"; 
+  final String baseUrl = "http://192.168.0.8:3000"; 
 
   
 

@@ -4,7 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';  // Importer Shared
 import '../models/user_model.dart';
 
 class AuthRepository {
-  final String baseUrl = "http://10.0.2.2:3000"; 
+  final String baseUrl = "http://192.168.0.8:3000"; 
 
   Future<Map<String, dynamic>> register(UserModel user) async {
     final response = await http.post(

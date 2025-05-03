@@ -34,7 +34,7 @@ class _CarDetailPageState extends State<CarDetailPage> {
     ;
 
     final response = await http.get(
-      Uri.parse('http://10.0.2.2:3000/carAnnouncement/${widget.annonceId}'),
+      Uri.parse('http://192.168.0.8:3000/carAnnouncement/${widget.annonceId}'),
     );
     
     if (response.statusCode == 200) {

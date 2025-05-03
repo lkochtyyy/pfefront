@@ -1,99 +1,897 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lottie/lottie.dart';
+import 'package:animate_do/animate_do.dart';
+import 'dart:io';
 import 'package:image_picker/image_picker.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:pfefront/blocs/announcement/car_announcement_bloc.dart';
-import 'package:pfefront/data/models/announcement_model.dart';
-import 'package:pfefront/utils/shared_prefs_helper.dart';
-
-// If the Announcement class is not defined in the imported file, define it here or ensure the correct file is imported.
+import 'package:pfefront/pages/mypubs.dart';
 
 class PublierAnnoncePage extends StatefulWidget {
-final Map<String, dynamic>? publicationData; // Données de la publication
-
+  final Map<String, dynamic>? publicationData;
 
   const PublierAnnoncePage({super.key, this.publicationData});
 
   @override
-  State<PublierAnnoncePage> createState() => _CreateEditCarPageState();
+  State<PublierAnnoncePage> createState() => _PublierAnnoncePageState();
 }
 
-class _CreateEditCarPageState extends State<PublierAnnoncePage> {
+class _PublierAnnoncePageState extends State<PublierAnnoncePage>
+    with SingleTickerProviderStateMixin {
+  // Contrôleurs
   final _formKey = GlobalKey<FormState>();
-  String? selectedCondition = 'Nouveau'; // Valeur par défaut
-  String? selectedBrand;
-  String? selectedModel;
-  String? selectedFuel;
-  String? selectedTransmission;
-  List<String> selectedFeatures = [];
+  final _pageController = PageController();
+  final _titreController = TextEditingController();
+  final _anneeController = TextEditingController();
+  final _marqueController = TextEditingController();
+  final _modeleController = TextEditingController();
+  final _kilometrageController = TextEditingController();
+  final _lieuController = TextEditingController();
+  final _prixController = TextEditingController();
+  final _descriptionController = TextEditingController();
+  final _phoneController = TextEditingController();
 
-  final TextEditingController _titleController = TextEditingController();
-  final TextEditingController _yearController = TextEditingController();
-  final TextEditingController _locationController = TextEditingController();
-  final TextEditingController _priceController = TextEditingController();
-  final TextEditingController _descriptionController = TextEditingController();
-  final TextEditingController _kilometersController = TextEditingController();
+  // États
+  int _currentPage = 0;
+  bool _isLoading = false;
+  String _condition = 'Nouveau';
+  String _carburant = 'Essence';
+  String _boite = 'Automatique';
+  bool _bluetooth = false, _alarm = false, _cruise = false, _parking = false;
+  List<bool> _completedSections = [false, false, false];
+  bool _isDescriptionFocused = false;
 
-  List<String> allFeatures = [
-    'Alarm',
-    'Bluetooth',
-    'Cruise Control',
-    'Front Parking Sensor'
-  ];
-  List<String> fuelTypes = ['Essence', 'Diesel', 'Électrique', 'Hybride'];
-  List<String> transmissions = ['Manuelle', 'Automatique'];
+  // Animations
+  late AnimationController _bgController;
+  late Animation<Color?> _color1;
+  late Animation<Color?> _color2;
 
-  File? selectedImage;
+  // Images
+  final List<File> _selectedImages = [];
+  final ImagePicker _picker = ImagePicker();
 
-  Future<void> _pickImage() async {
-    final picker = ImagePicker();
-    final XFile? picked = await picker.pickImage(
-      source: ImageSource.gallery,
-      maxWidth: 1024,
-      maxHeight: 1024,
-    );
-    if (picked != null) {
-      setState(() {
-        selectedImage = File(picked.path);
-      });
+  // Constantes de style
+  final Color _primaryColor = const Color(0xFF50C2C9);
+  final Color _secondaryColor = const Color.fromARGB(255, 139, 89, 200);
+  final Color _backgroundColor = const Color(0xFFE1F5F7);
+  final Duration _animationDuration = const Duration(milliseconds: 300);
+
+  @override
+  void initState() {
+    super.initState();
+    _initAnimations();
+    _prefillDataIfEditing();
+  }
+
+  void _initAnimations() {
+    _bgController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 6),
+    )..repeat(reverse: true);
+
+    _color1 = ColorTween(
+      begin: _primaryColor,
+      end: _backgroundColor,
+    ).animate(_bgController);
+
+    _color2 = ColorTween(
+      begin: _backgroundColor,
+      end: _primaryColor,
+    ).animate(_bgController);
+  }
+
+  void _prefillDataIfEditing() {
+    if (widget.publicationData != null) {
+      _titreController.text = widget.publicationData!['titre'] ?? '';
+      _anneeController.text = widget.publicationData!['annee'] ?? '';
+      _marqueController.text = widget.publicationData!['marque'] ?? '';
+      _modeleController.text = widget.publicationData!['modele'] ?? '';
+      _kilometrageController.text =
+          widget.publicationData!['kilometrage'] ?? '';
+      _lieuController.text = widget.publicationData!['lieu'] ?? '';
+      _prixController.text = widget.publicationData!['prix'] ?? '';
+      _descriptionController.text =
+          widget.publicationData!['description'] ?? '';
+      _condition = widget.publicationData!['condition'] ?? 'Nouveau';
+      _carburant = widget.publicationData!['carburant'] ?? 'Essence';
+      _boite = widget.publicationData!['boite'] ?? 'Automatique';
+
+      // Pré-remplir les options si elles existent
+      if (widget.publicationData!.containsKey('options')) {
+        final options = widget.publicationData!['options'] as Map<String, bool>;
+        _bluetooth = options['bluetooth'] ?? false;
+        _alarm = options['alarm'] ?? false;
+        _cruise = options['cruise'] ?? false;
+        _parking = options['parking'] ?? false;
+      }
+
+      // Marquer toutes les sections comme complétées si on est en mode édition
+      _completedSections = [true, true, true];
     }
   }
 
-  Future<void> _showImagePickerOptions() async {
-    showModalBottomSheet(
+  @override
+  void dispose() {
+    _bgController.dispose();
+    _pageController.dispose();
+    _titreController.dispose();
+    _anneeController.dispose();
+    _marqueController.dispose();
+    _modeleController.dispose();
+    _kilometrageController.dispose();
+    _lieuController.dispose();
+    _prixController.dispose();
+    _descriptionController.dispose();
+    _phoneController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickImages() async {
+    try {
+      final List<XFile>? images = await _picker.pickMultiImage();
+      if (images != null && images.isNotEmpty) {
+        setState(() {
+          _selectedImages.addAll(images.map((image) => File(image.path)));
+        });
+      }
+    } on PlatformException catch (e) {
+      _showErrorSnackbar(
+          'Erreur lors de la sélection des images: ${e.message}');
+    }
+  }
+
+  Future<void> _removeImage(int index) async {
+    setState(() {
+      _selectedImages.removeAt(index);
+    });
+  }
+
+  Future<void> _showPhoneNumberDialog() async {
+    bool isSuccess = false; // État pour afficher le message de succès
+    bool isLoading = false; // État pour afficher le CircularProgressIndicator
+    bool showLottie = false; // État pour afficher l'animation Lottie
+    String phoneError = ""; // Message d'erreur pour le champ de téléphone
+
+    return showModalBottomSheet(
       context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AnimatedPadding(
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeOut,
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom,
+              ),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius:
+                      const BorderRadius.vertical(top: Radius.circular(24)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black12,
+                      blurRadius: 15,
+                      offset: const Offset(0, -3),
+                    ),
+                  ],
+                ),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 30),
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 400),
+                  child: showLottie
+                      ? Column(
+                          key: const ValueKey('lottie'),
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Lottie.asset(
+                              'assets/json/pub.json',
+                              height: 200,
+                              repeat: false,
+                              onLoaded: (composition) {
+                                Future.delayed(const Duration(seconds: 5), () {
+                                  setState(() {
+                                    isSuccess =
+                                        true; // Passer à l'état de succès
+                                    showLottie =
+                                        false; // Masquer l'animation Lottie
+                                  });
+                                });
+                              },
+                            ),
+                          ],
+                        )
+                      : isSuccess
+                          ? Column(
+                              key: const ValueKey('success'),
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const SizedBox(height: 10),
+                                Text(
+                                  "Véhicule publié avec succès !",
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: _secondaryColor,
+                                  ),
+                                ),
+                                const SizedBox(height: 30),
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    // Bouton "Créer une autre annonce"
+                                    Expanded(
+                                      child: ElevatedButton.icon(
+                                        onPressed: () {
+                                          // Réinitialiser le formulaire
+                                          setState(() {
+                                            _titreController.clear();
+                                            _anneeController.clear();
+                                            _marqueController.clear();
+                                            _modeleController.clear();
+                                            _kilometrageController.clear();
+                                            _lieuController.clear();
+                                            _prixController.clear();
+                                            _descriptionController.clear();
+                                            _selectedImages.clear();
+                                            _condition = 'Nouveau';
+                                            _carburant = 'Essence';
+                                            _boite = 'Automatique';
+                                            _bluetooth = false;
+                                            _alarm = false;
+                                            _cruise = false;
+                                            _parking = false;
+                                            _completedSections = [
+                                              false,
+                                              false,
+                                              false
+                                            ];
+                                          });
+
+                                          // Revenir au premier bloc
+                                          _pageController.animateToPage(
+                                            0,
+                                            duration: _animationDuration,
+                                            curve: Curves.easeInOut,
+                                          );
+
+                                          // Fermer la modal
+                                          Navigator.pop(context);
+                                        },
+                                        icon: const Icon(Icons.add,
+                                            color: Colors.white),
+                                        label: Text(
+                                          "Créer une autre",
+                                          style: GoogleFonts.poppins(
+                                            fontWeight: FontWeight.w500,
+                                            fontSize: 16,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor:
+                                              Colors.grey[600], // Couleur grise
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(12),
+                                          ),
+                                          padding: const EdgeInsets.symmetric(
+                                              vertical: 16),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 16),
+                                    // Bouton "Voir mon annonce"
+                                    Expanded(
+                                      child: ElevatedButton.icon(
+                                        onPressed: () {
+                                          Navigator.pop(context);
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                                builder: (_) =>
+                                                    const MyPubsPage()),
+                                          );
+                                        },
+                                        icon: const Icon(Icons.visibility,
+                                            color: Colors.white),
+                                        label: Text(
+                                          "Voir mon annonce",
+                                          style: GoogleFonts.poppins(
+                                            fontWeight: FontWeight.w500,
+                                            fontSize: 16,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: _primaryColor,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(12),
+                                          ),
+                                          padding: const EdgeInsets.symmetric(
+                                              vertical: 16),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            )
+                          : Column(
+                              key: const ValueKey('form'),
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  width: 40,
+                                  height: 5,
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey[300],
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  margin: const EdgeInsets.only(bottom: 16),
+                                ),
+                                Icon(Icons.phone_android,
+                                    size: 50, color: _secondaryColor),
+                                const SizedBox(height: 10),
+                                Text(
+                                  "Ajouter votre numéro",
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                    color: _secondaryColor,
+                                  ),
+                                ),
+                                const SizedBox(height: 10),
+                                Text(
+                                  "Veuillez saisir un numéro valide pour que les acheteurs peuvent vous contacter.",
+                                  style: GoogleFonts.poppins(
+                                      color: Colors.grey[600]),
+                                  textAlign: TextAlign.center,
+                                ),
+                                const SizedBox(height: 20),
+                                TextFormField(
+                                  controller: _phoneController,
+                                  keyboardType: TextInputType.phone,
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 14, // Taille de la police
+                                    color: Colors.black87, // Couleur du texte
+                                  ),
+                                  decoration: InputDecoration(
+                                    labelText: "Numéro de téléphone",
+                                    labelStyle: GoogleFonts.poppins(
+                                      fontSize: 14,
+                                      color: Colors.grey[600],
+                                    ),
+                                    hintStyle: GoogleFonts.poppins(
+                                      fontSize: 14,
+                                      color: Colors.grey[600],
+                                    ),
+                                    prefixIcon: Padding(
+                                      padding: const EdgeInsets.all(10),
+                                      child: Lottie.asset(
+                                        'assets/json/phone.json',
+                                        width: 50,
+                                        height: 50,
+                                        fit: BoxFit.contain,
+                                      ),
+                                    ),
+                                    errorText: phoneError.isNotEmpty
+                                        ? phoneError
+                                        : null,
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                    ),
+                                    filled: true,
+                                    fillColor: Colors.grey[100],
+                                  ),
+                                  onChanged: (value) {
+                                    if (phoneError.isNotEmpty) {
+                                      setState(() => phoneError = '');
+                                    }
+                                  },
+                                ),
+                                const SizedBox(height: 30),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: OutlinedButton.icon(
+                                        onPressed: isLoading
+                                            ? null
+                                            : () => Navigator.pop(context),
+                                        icon: const Icon(Icons.close,
+                                            color: Colors.red),
+                                        label: Text("Annuler",
+                                            style: GoogleFonts.poppins(
+                                                color: Colors.red)),
+                                        style: OutlinedButton.styleFrom(
+                                          padding: const EdgeInsets.symmetric(
+                                              vertical: 16),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(12),
+                                          ),
+                                          side: const BorderSide(
+                                              color: Colors.red),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 16),
+                                    Expanded(
+                                      child: ElevatedButton(
+                                        onPressed: isLoading
+                                            ? null
+                                            : () async {
+                                                final phone = _phoneController
+                                                    .text
+                                                    .trim();
+                                                if (!RegExp(r'^[0-9]{8}$')
+                                                    .hasMatch(phone)) {
+                                                  setState(() {
+                                                    phoneError =
+                                                        "Numéro invalide. 8 chiffres requis.";
+                                                  });
+                                                  return;
+                                                }
+
+                                                setState(
+                                                    () => isLoading = true);
+
+                                                // Simuler un délai pour la validation
+                                                await Future.delayed(
+                                                    const Duration(seconds: 2));
+
+                                                setState(() {
+                                                  isLoading = false;
+                                                  showLottie =
+                                                      true; // Afficher l'animation Lottie
+                                                });
+                                              },
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor:
+                                              _secondaryColor, // Couleur mauve
+                                          padding: const EdgeInsets.symmetric(
+                                              vertical: 16),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(12),
+                                          ),
+                                        ),
+                                        child: isLoading
+                                            ? const SizedBox(
+                                                height: 20,
+                                                width: 20,
+                                                child:
+                                                    CircularProgressIndicator(
+                                                  strokeWidth: 2,
+                                                  valueColor:
+                                                      AlwaysStoppedAnimation<
+                                                          Color>(Colors.white),
+                                                ),
+                                              )
+                                            : Row(
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment.center,
+                                                children: [
+                                                  const Icon(Icons.check_circle,
+                                                      color: Colors.white),
+                                                  const SizedBox(width: 8),
+                                                  Text(
+                                                    "Confirmer",
+                                                    style: GoogleFonts.poppins(
+                                                        color: Colors.white),
+                                                  ),
+                                                ],
+                                              ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _showLoadingDialog() async {
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => Center(
+        child: CircularProgressIndicator(
+          valueColor: AlwaysStoppedAnimation<Color>(_primaryColor),
+        ),
       ),
-      builder: (_) => Padding(
-        padding: const EdgeInsets.all(20),
-        child: Wrap(
-          runSpacing: 10,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.camera_alt),
-              title: const Text('Prendre une photo'),
-              onTap: () async {
-                Navigator.pop(context);
-                final picker = ImagePicker();
-                final XFile? picked =
-                    await picker.pickImage(source: ImageSource.camera);
-                if (picked != null) {
-                  setState(() {
-                    selectedImage = File(picked.path);
-                  });
-                }
-              },
+    );
+
+    await Future.delayed(const Duration(seconds: 2));
+    if (mounted) Navigator.pop(context);
+  }
+
+  Future<void> _publish() async {
+    if (!_validateCurrentPage()) return;
+
+    // Vérifier qu'au moins une image est sélectionnée
+    if (_selectedImages.isEmpty) {
+      _showErrorSnackbar('Veuillez ajouter au moins une image');
+      return;
+    }
+
+    await _showPhoneNumberDialog();
+  }
+
+  bool _validateCurrentPage() {
+    bool isValid = false;
+
+    switch (_currentPage) {
+      case 0:
+        isValid = _validateFields([
+          _titreController,
+          _anneeController,
+          _marqueController,
+          _modeleController
+        ]);
+        break;
+      case 1:
+        isValid = _validateFields([_kilometrageController]);
+        break;
+      case 2:
+        isValid = _validateFields([_lieuController, _prixController]);
+        break;
+    }
+
+    if (isValid) {
+      setState(() {
+        _completedSections[_currentPage] = true;
+        if (_currentPage < 2) {
+          Future.delayed(_animationDuration, () {
+            _pageController.nextPage(
+              duration: _animationDuration,
+              curve: Curves.easeInOut,
+            );
+          });
+        }
+      });
+    }
+
+    return isValid;
+  }
+
+  bool _validateFields(List<TextEditingController> controllers) {
+    for (final controller in controllers) {
+      if (controller.text.trim().isEmpty) {
+        _showErrorSnackbar('Veuillez remplir tous les champs obligatoires');
+        return false;
+      }
+    }
+    return true;
+  }
+
+  void _showErrorSnackbar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        backgroundColor: Colors.red[400],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        title: Text(
+          widget.publicationData != null
+              ? "Modifier l'annonce"
+              : "Publier une annonce",
+          style: GoogleFonts.poppins(
+            fontWeight: FontWeight.w600,
+            fontSize: 18,
+            color: Colors.black87,
+          ),
+        ),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        foregroundColor: Colors.black,
+        actions: [
+          if (widget.publicationData != null)
+            IconButton(
+              icon: const Icon(Icons.delete),
+              onPressed: () => _showDeleteConfirmationDialog(),
             ),
-            ListTile(
-              leading: const Icon(Icons.photo_library),
-              title: const Text('Choisir depuis la galerie'),
-              onTap: () async {
-                Navigator.pop(context);
-                await _pickImage();
-              },
+        ],
+      ),
+      body: AnimatedBuilder(
+        animation: _bgController,
+        builder: (context, child) {
+          return Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [_color1.value!, _color2.value!],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
+            child: SafeArea(
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  children: [
+                    _buildPageIndicator(),
+                    Expanded(
+                      child: PageView(
+                        controller: _pageController,
+                        physics: const NeverScrollableScrollPhysics(),
+                        onPageChanged: (index) {
+                          setState(() => _currentPage = index);
+                        },
+                        children: [
+                          _buildInfoSection(),
+                          _buildFeaturesSection(),
+                          _buildDetailsSection(),
+                        ],
+                      ),
+                    ),
+                    if (_currentPage == 2) _buildSubmitButton(),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Future<void> _showDeleteConfirmationDialog() async {
+    return showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(
+          "Confirmer la suppression",
+          style: GoogleFonts.poppins(
+            fontWeight: FontWeight.bold,
+            color: Colors.red,
+          ),
+        ),
+        content: Text(
+          "Êtes-vous sûr de vouloir supprimer cette annonce ? Cette action est irréversible.",
+          style: GoogleFonts.poppins(),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              "Annuler",
+              style: GoogleFonts.poppins(),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              // TODO: Implémenter la suppression
+              Navigator.pop(context);
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Annonce supprimée avec succès')),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+            ),
+            child: Text(
+              "Supprimer",
+              style: GoogleFonts.poppins(color: Colors.white),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPageIndicator() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 20),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: List.generate(3, (index) {
+          return GestureDetector(
+            onTap: () {
+              if (index == 0 || _completedSections[index - 1]) {
+                _pageController.animateToPage(
+                  index,
+                  duration: _animationDuration,
+                  curve: Curves.easeInOut,
+                );
+              }
+            },
+            child: AnimatedContainer(
+              duration: _animationDuration,
+              margin: const EdgeInsets.symmetric(horizontal: 8),
+              width: _currentPage == index ? 24 : 12,
+              height: 12,
+              decoration: BoxDecoration(
+                color: _currentPage == index
+                    ? _primaryColor
+                    : Colors.white.withOpacity(0.7),
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(
+                  color:
+                      _completedSections[index] ? Colors.green : _primaryColor,
+                  width: 2,
+                ),
+              ),
+            ),
+          );
+        }),
+      ),
+    );
+  }
+
+  Widget _buildSubmitButton() {
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 600),
+      switchInCurve: Curves.easeOutQuart,
+      switchOutCurve: Curves.easeInQuart,
+      child: _currentPage == 2
+          ? Padding(
+              key: const ValueKey("submit_button"),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+              child: GestureDetector(
+                onTapDown: (_) => HapticFeedback.lightImpact(),
+                onTap: _isLoading ? null : _publish,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 500),
+                  curve: Curves.easeOutCubic,
+                  height: 60,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(24),
+                    gradient: LinearGradient(
+                      colors: _isLoading
+                          ? [
+                              _secondaryColor.withOpacity(0.6),
+                              _primaryColor.withOpacity(0.6)
+                            ]
+                          : [_secondaryColor, _primaryColor],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: _primaryColor.withOpacity(0.3),
+                        blurRadius: 12,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
+                  ),
+                  child: Center(
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 400),
+                      child: _isLoading
+                          ? const CircularProgressIndicator(
+                              strokeWidth: 3,
+                              valueColor:
+                                  AlwaysStoppedAnimation<Color>(Colors.white),
+                            )
+                          : Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(Icons.publish, color: Colors.white),
+                                const SizedBox(width: 12),
+                                Text(
+                                  widget.publicationData != null
+                                      ? "Mettre à jour l'annonce"
+                                      : "Publier ma voiture",
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ],
+                            ),
+                    ),
+                  ),
+                ),
+              ),
+            )
+          : const SizedBox(key: ValueKey("empty"), height: 24),
+    );
+  }
+
+  Widget _buildInfoSection() {
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: Opacity(
+                opacity: 0.1,
+                child: Lottie.asset(
+                  'assets/json/decor.json',
+                  fit: BoxFit.cover,
+                ),
+              ),
+            ),
+            Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                ConstrainedBox(
+                  constraints: const BoxConstraints(minHeight: 400),
+                  child: _buildCard(
+                    title: "Titre de l'annonce",
+                    children: [
+                      const SizedBox(height: 20),
+                      _buildStyledTextField(
+                        "Titre de l'annonce*",
+                        _titreController,
+                        validator: (value) => value?.isEmpty ?? true
+                            ? 'Ce champ est obligatoire'
+                            : null,
+                      ),
+                      const SizedBox(height: 30),
+                      Text(
+                        "Commencez par indiquer un titre clair et descriptif qui attirera l'attention des acheteurs.",
+                        style: GoogleFonts.poppins(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w400,
+                          color: Colors.grey[700],
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 40),
+                      Row(
+                        mainAxisAlignment:
+                            MainAxisAlignment.end, // Aligner à droite
+                        children: [
+                          FadeInUp(
+                            delay: const Duration(milliseconds: 300),
+                            child: ElevatedButton(
+                              onPressed: () {
+                                if (_titreController.text.trim().isEmpty) {
+                                  _showErrorSnackbar(
+                                      'Veuillez remplir le titre de l\'annonce');
+                                } else {
+                                  _pageController.animateToPage(
+                                    1,
+                                    duration: _animationDuration,
+                                    curve: Curves.easeInOut,
+                                  );
+                                }
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: _secondaryColor,
+                                padding: const EdgeInsets.all(16),
+                                shape: const CircleBorder(),
+                                shadowColor: _secondaryColor.withOpacity(0.5),
+                                elevation: 8,
+                              ),
+                              child: const Icon(
+                                Icons.arrow_forward,
+                                color: Colors.white,
+                                size: 24,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -101,440 +899,666 @@ class _CreateEditCarPageState extends State<PublierAnnoncePage> {
     );
   }
 
-  void _submitForm() async {
-    if (_formKey.currentState!.validate()) {
-      if (selectedBrand == null ||
-          selectedModel == null ||
-          selectedFuel == null ||
-          selectedTransmission == null ||
-          selectedImage == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Veuillez remplir tous les champs obligatoires.')),
-        );
-        return;
-      }
-
-      try {
-        final year = int.parse(_yearController.text);
-        final mileage = int.parse(_kilometersController.text);
-        final price = double.parse(_priceController.text);
-        final String optionsString = selectedFeatures.join(',');
-        final userId = await SharedPrefsHelper.getUserId();
-
-
-        // Créer l'objet CarAnnouncement avec les données du formulaire
-        final announcement = CarAnnouncement(
-          title: _titleController.text,
-          carCondition: selectedCondition!,
-          year: year,
-          brand: selectedBrand!,
-          model: selectedModel!,
-          fuelType: selectedFuel!,
-          mileage: mileage,
-          options: optionsString,
-          location: _locationController.text,
-          price: price,
-          description: _descriptionController.text,
-          imageFile: selectedImage!,
-          imageUrl: '', // Provide a valid URL or placeholder string
-          vendorId: int.parse(userId!) ,
-        );
-
-        // Envoyer l'événement au Bloc
-        context.read<CarAnnouncementBloc>().add(
-              CreateAnnouncement(
-                announcement: announcement, imageFile: selectedImage!, userId : userId,
-              ),
-            );
-      } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Veuillez entrer des valeurs valides.')),
-        );
-      }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return BlocListener<CarAnnouncementBloc, CarAnnouncementState>(
-      listener: (context, state) {
-        if (state is AnnouncementCreated) {
-          showModalBottomSheet(
-            context: context,
-            shape: const RoundedRectangleBorder(
-              borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
-            ),
-            builder: (_) => Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Lottie.asset('assets/json/pub.json', height: 120),
-                  const SizedBox(height: 12),
-                  Text(
-                    'Voiture ajoutée avec succès !',
-                    style: GoogleFonts.poppins(
-                        fontSize: 18, fontWeight: FontWeight.w600),
-                  ),
-                ],
-              ),
-            ),
-          );
-
-          Future.delayed(const Duration(seconds: 2), () {
-            Navigator.pop(context); // Fermer le bottom sheet
-            Navigator.pop(context); // Revenir à l'écran précédent
-          });
-        }
-      },
-      child: Scaffold(
-        body: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                Color(0xFF50C2C9),
-                Color.fromARGB(255, 235, 237, 243),
-                Color(0xFFE1F5F7),
-              ],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-          ),
-          child: SafeArea(
-            child: Form(
-              key: _formKey,
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.arrow_back),
-                          onPressed: () => Navigator.pop(context),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Créer / Modifier Voiture',
-                          style: GoogleFonts.poppins(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-                    _buildTextField(
-                      'Titre',
-                      _titleController,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black12,
-                          blurRadius: 10,
-                          offset: Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildRadioGroup(
-                              'Condition', ['Nouveau', 'Ancienne']),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _buildTextField('Année', _yearController,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black12,
-                                  blurRadius: 10,
-                                  offset: Offset(0, 4),
-                                ),
-                              ],
-                              type: TextInputType.number),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildDropdown(
-                              'Marque',
-                              ['BMW', 'Mercedes', 'Audi'],
-                              (val) => selectedBrand = val),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _buildDropdown(
-                              'Modèle',
-                              ['Série 3', 'A4', 'Classe C'],
-                              (val) => selectedModel = val),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildDropdown('Carburant', fuelTypes,
-                              (val) => selectedFuel = val),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _buildDropdown('Boîte', transmissions,
-                              (val) => selectedTransmission = val),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    _buildTextField('Kilométrage', _kilometersController,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black12,
-                            blurRadius: 10,
-                            offset: Offset(0, 4),
-                          ),
-                        ],
-                        type: TextInputType.number),
-                    const SizedBox(height: 12),
-                    Text(
-                      'Options',
-                      style: GoogleFonts.poppins(
-                          fontSize: 16, fontWeight: FontWeight.w600),
-                    ),
-                    Wrap(
-                      spacing: 10,
-                      runSpacing: 6,
-                      children: allFeatures
-                          .map(
-                            (feature) => FilterChip(
-                              label: Text(feature),
-                              selected: selectedFeatures.contains(feature),
-                              onSelected: (isSelected) {
-  setState(() {
-    isSelected
-        ? selectedFeatures.add(feature)
-        : selectedFeatures.remove(feature);
-  });
-},
-
-                            ),
-                          )
-                          .toList(),
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildTextField(
-                            'Lieu',
-                            _locationController,
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black12,
-                                blurRadius: 10,
-                                offset: Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _buildTextField('Prix', _priceController,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black12,
-                                  blurRadius: 10,
-                                  offset: Offset(0, 4),
-                                ),
-                              ],
-                              type: TextInputType.number),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    _buildTextField('Description', _descriptionController,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black12,
-                            blurRadius: 10,
-                            offset: Offset(0, 4),
-                          ),
-                        ],
-                        maxLines: 4),
-                    const SizedBox(height: 20),
-                    GestureDetector(
-                      onTap: _showImagePickerOptions,
-                      child: Center(
-                        child: selectedImage == null
-                            ? Column(
-                                children: [
-                                  Lottie.asset('assets/json/add.json',
-                                      height: 180),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    'Cliquez ici pour ajouter une image',
-                                    style: GoogleFonts.poppins(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w500,
-                                        color: Colors.grey.shade800),
-                                  ),
-                                ],
-                              )
-                            : ClipRRect(
-                                borderRadius: BorderRadius.circular(30),
-                                child: Image.file(
-                                  selectedImage!,
-                                  height: 200,
-                                  width: double.infinity,
-                                  fit: BoxFit.cover,
-                                ),
-                              ),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    Center(
-                      child: BlocBuilder<CarAnnouncementBloc, CarAnnouncementState>(
-                        builder: (context, state) {
-                          return ElevatedButton(
-                            onPressed: state is CarAnnouncementLoading
-                                ? null
-                                : _submitForm,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF00C2CB),
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 50, vertical: 16),
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(30)),
-                              elevation: 8,
-                            ),
-                            child: state is CarAnnouncementLoading
-                                ? const CircularProgressIndicator(
-                                    color: Colors.white)
-                                : Text(
-                                    'Publier ma voiture',
-                                    style: GoogleFonts.poppins(fontSize: 16),
-                                  ),
-                          );
-                        },
-                      ),
-                    ),
-                  ],
+  Widget _buildFeaturesSection() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        children: [
+          _buildCard(
+            title: "Détails Techniques",
+            children: [
+              const SizedBox(height: 20),
+              _buildAnimatedFormRow([
+                _buildLottieField(
+                  animationPath: 'assets/json/year.json',
+                  label: "Année*",
+                  controller: _anneeController,
+                  keyboardType: TextInputType.number,
+                  validator: (value) {
+                    if (value?.isEmpty ?? true)
+                      return 'Ce champ est obligatoire';
+                    final year = int.tryParse(value!);
+                    if (year == null ||
+                        year < 1900 ||
+                        year > DateTime.now().year + 1) {
+                      return 'Année invalide';
+                    }
+                    return null;
+                  },
                 ),
+                _buildLottieField(
+                  animationPath: 'assets/json/kilo.json',
+                  label: "Kilométrage*",
+                  controller: _kilometrageController,
+                  keyboardType: TextInputType.number,
+                  validator: (value) {
+                    if (value?.isEmpty ?? true)
+                      return 'Ce champ est obligatoire';
+                    final km = int.tryParse(value!);
+                    if (km == null || km < 0) return 'Valeur invalide';
+                    return null;
+                  },
+                ),
+              ]),
+              const SizedBox(height: 20),
+              _buildAnimatedFormRow([
+                _buildLottieField(
+                  animationPath: 'assets/json/mark.json',
+                  label: "Marque*",
+                  controller: _marqueController,
+                  validator: (value) => value?.isEmpty ?? true
+                      ? 'Ce champ est obligatoire'
+                      : null,
+                ),
+                _buildLottieField(
+                  animationPath: 'assets/json/model.json',
+                  label: "Modèle*",
+                  controller: _modeleController,
+                  validator: (value) => value?.isEmpty ?? true
+                      ? 'Ce champ est obligatoire'
+                      : null,
+                ),
+              ]),
+              const SizedBox(height: 30),
+              _buildDivider(),
+              // Carburant au-dessus de Boîte de vitesse
+              _buildLottieDropdown(
+                animationPath: 'assets/json/fuuel.json',
+                label: "Carburant*",
+                value: _carburant,
+                items: const ["Essence", "Diesel", "Hybride", "Électrique"],
+                onChanged: (val) => setState(() => _carburant = val!),
               ),
-            ),
+              const SizedBox(height: 20),
+              _buildLottieDropdown(
+                animationPath: 'assets/json/gearbox.json',
+                label: "Boîte de vitesse*",
+                value: _boite,
+                items: const ["Automatique", "Manuelle"],
+                onChanged: (val) => setState(() => _boite = val!),
+              ),
+              const SizedBox(height: 20),
+              _buildDivider(),
+              _buildOptionsExpansionTile(),
+              const SizedBox(height: 20),
+              _buildNavigationButtons(),
+            ],
           ),
-        ),
+        ],
       ),
     );
   }
 
-  Widget _buildTextField(
-    String hint,
-    TextEditingController controller, {
-    int maxLines = 1,
-    TextInputType type = TextInputType.text,
-    List<BoxShadow>? boxShadow,
-  }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(30),
-        boxShadow: boxShadow ?? [],
-      ),
-      child: TextFormField(
-        controller: controller,
-        keyboardType: type,
-        maxLines: maxLines,
-        style: GoogleFonts.poppins(),
-        decoration: InputDecoration(
-          hintText: hint,
-          hintStyle: GoogleFonts.poppins(color: Colors.grey.shade500),
-          filled: true,
-          fillColor: Colors.white,
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(30),
-            borderSide: BorderSide.none,
+  Widget _buildDetailsSection() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        children: [
+          _buildCard(
+            title: "Finalisation",
+            children: [
+              const SizedBox(height: 20),
+              _buildAnimatedFormRow([
+                _buildLottieField(
+                  animationPath: 'assets/json/place.json',
+                  label: "Lieu*",
+                  controller: _lieuController,
+                  validator: (value) => value?.isEmpty ?? true
+                      ? 'Ce champ est obligatoire'
+                      : null,
+                ),
+                _buildLottieField(
+                  animationPath: 'assets/json/price.json',
+                  label: "Prix* (FCFA)",
+                  controller: _prixController,
+                  keyboardType: TextInputType.number,
+                  validator: (value) {
+                    if (value?.isEmpty ?? true)
+                      return 'Ce champ est obligatoire';
+                    final price = double.tryParse(value!);
+                    if (price == null || price <= 0) return 'Prix invalide';
+                    return null;
+                  },
+                ),
+              ]),
+              const SizedBox(height: 20),
+              _buildDivider(),
+              _buildDescriptionField(),
+              const SizedBox(height: 20),
+              _buildDivider(),
+              _buildImagePicker(),
+              const SizedBox(height: 20),
+              _buildNavigationButtons(),
+            ],
           ),
-        ),
-        validator: (value) =>
-            value == null || value.isEmpty ? 'Champ requis' : null,
+        ],
       ),
     );
   }
 
-  Widget _buildRadioGroup(String label, List<String> options) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildNavigationButtons() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(
-          label,
-          style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w600),
+        // Bouton Retour
+        FadeInLeft(
+          delay: const Duration(milliseconds: 300),
+          child: ElevatedButton(
+            onPressed: () {
+              _pageController.previousPage(
+                duration: _animationDuration,
+                curve: Curves.easeInOut,
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.grey[300], // Couleur grise
+              padding: const EdgeInsets.all(16),
+              shape: const CircleBorder(),
+              shadowColor: Colors.grey.withOpacity(0.5),
+              elevation: 8,
+            ),
+            child: const Icon(
+              Icons.arrow_back, // Flèche inversée
+              color: Colors.black87,
+              size: 24,
+            ),
+          ),
         ),
-        Row(
-          children: options
-              .map(
-                (opt) => Expanded(
-                  child: Row(
-                    children: [
-                      Radio<String>(
-                        value: opt,
-                        groupValue: selectedCondition,
-                        onChanged: (val) =>
-                            setState(() => selectedCondition = val),
-                      ),
-                      Flexible(
-                          child: Text(opt,
-                              style: GoogleFonts.poppins(fontSize: 14),
-                              overflow: TextOverflow.ellipsis)),
-                    ],
-                  ),
-                ),
-              )
-              .toList(),
+
+        // Bouton Suivant
+        if (_currentPage < 2)
+          FadeInRight(
+            delay: const Duration(milliseconds: 300),
+            child: ElevatedButton(
+              onPressed: () {
+                if (_validateCurrentPage()) {
+                  _pageController.nextPage(
+                    duration: _animationDuration,
+                    curve: Curves.easeInOut,
+                  );
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _secondaryColor, // Couleur mauve
+                padding: const EdgeInsets.all(16),
+                shape: const CircleBorder(),
+                shadowColor: _secondaryColor.withOpacity(0.5),
+                elevation: 8,
+              ),
+              child: const Icon(
+                Icons.arrow_forward, // Flèche vers l'avant
+                color: Colors.white,
+                size: 24,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildAnimatedFormRow(List<Widget> children) {
+    return Row(
+      children: [
+        for (int i = 0; i < children.length; i++) ...[
+          if (i > 0) const SizedBox(width: 12),
+          Expanded(child: children[i]),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildLottieField({
+    required String animationPath,
+    required String label,
+    required TextEditingController controller,
+    TextInputType keyboardType = TextInputType.text,
+    String? Function(String?)? validator,
+  }) {
+    return Column(
+      children: [
+        SizedBox(
+          height: 80,
+          child: Lottie.asset(animationPath),
+        ),
+        const SizedBox(height: 8),
+        _buildStyledTextField(
+          label,
+          controller,
+          keyboardType: keyboardType,
+          validator: validator,
         ),
       ],
     );
   }
 
-  Widget _buildDropdown(
-      String hint, List<String> items, void Function(String?) onChanged) {
-    return DropdownButtonFormField<String>(
-      decoration: InputDecoration(
-        hintText: hint,
-        hintStyle: GoogleFonts.poppins(color: Colors.grey.shade500),
-        filled: true,
-        fillColor: Colors.white,
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(30),
-          borderSide: BorderSide.none,
+  Widget _buildLottieDropdown({
+    required String animationPath,
+    required String label,
+    required String value,
+    required List<String> items,
+    required ValueChanged<String?> onChanged,
+  }) {
+    return Column(
+      children: [
+        SizedBox(
+          height: 60,
+          child: Lottie.asset(animationPath),
         ),
-      ),
-      items: items
-          .map((item) =>
-              DropdownMenuItem<String>(value: item, child: Text(item)))
-          .toList(),
-      onChanged: onChanged,
-      validator: (value) => value == null ? 'Ce champ est requis' : null,
+        const SizedBox(height: 8),
+        DropdownButtonFormField<String>(
+          value: value,
+          decoration: InputDecoration(
+            labelText: label,
+            labelStyle: GoogleFonts.poppins(fontSize: 14, color: Colors.grey),
+            filled: true,
+            fillColor: Colors.white.withOpacity(0.9),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Colors.grey, width: 1),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: _primaryColor, width: 2),
+            ),
+          ),
+          style: GoogleFonts.poppins(
+              fontSize: 14,
+              color: Colors
+                  .black87), // Police Poppins pour les éléments sélectionnés
+          items: items
+              .map((item) => DropdownMenuItem(
+                    value: item,
+                    child: Text(
+                      item,
+                      style: GoogleFonts.poppins(
+                          fontSize: 14,
+                          color: Colors
+                              .black87), // Police Poppins pour les options
+                    ),
+                  ))
+              .toList(),
+          onChanged: onChanged,
+        ),
+      ],
     );
   }
 
-  @override
-  void dispose() {
-    _titleController.dispose();
-    _yearController.dispose();
-    _locationController.dispose();
-    _priceController.dispose();
-    _descriptionController.dispose();
-    _kilometersController.dispose();
-    super.dispose();
+  Widget _buildDivider() {
+    return Divider(
+      color: Colors.grey[300],
+      thickness: 1,
+      height: 30,
+      indent: 20,
+      endIndent: 20,
+    );
+  }
+
+  Widget _buildOptionsExpansionTile() {
+    return ExpansionTile(
+      initiallyExpanded: widget.publicationData != null,
+      title: Text(
+        "Options",
+        style: GoogleFonts.poppins(
+          fontSize: 18,
+          fontWeight: FontWeight.w600,
+          color: Colors.black87,
+        ),
+      ),
+      children: [
+        const SizedBox(height: 10),
+        GridView.count(
+          crossAxisCount: 2,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          childAspectRatio: 4,
+          children: [
+            _buildCheckbox("Alarme", _alarm,
+                (val) => setState(() => _alarm = val ?? false)),
+            _buildCheckbox("Bluetooth", _bluetooth,
+                (val) => setState(() => _bluetooth = val ?? false)),
+            _buildCheckbox("Régulateur de vitesse", _cruise,
+                (val) => setState(() => _cruise = val ?? false)),
+            _buildCheckbox("Capteur de stationnement", _parking,
+                (val) => setState(() => _parking = val ?? false)),
+          ],
+        ),
+        const SizedBox(height: 10),
+      ],
+    );
+  }
+
+  Widget _buildDescriptionField() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          "Description",
+          style: GoogleFonts.poppins(
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
+            color: Colors.black87,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Stack(
+          children: [
+            Focus(
+              onFocusChange: (hasFocus) {
+                setState(() {
+                  _isDescriptionFocused = hasFocus;
+                });
+              },
+              child: TextFormField(
+                controller: _descriptionController,
+                maxLines: 5,
+                style: GoogleFonts.poppins(
+                  // Appliquer la police Poppins au texte saisi
+                  fontSize: 14,
+                  color: Colors.black87,
+                ),
+                decoration: InputDecoration(
+                  hintText: "Décrivez votre véhicule...",
+                  hintStyle: GoogleFonts.poppins(
+                    // Appliquer la police Poppins au texte d'indice
+                    fontSize: 14,
+                    color: Colors.grey,
+                  ),
+                  filled: true,
+                  fillColor: Colors.white.withOpacity(0.9),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Colors.grey, width: 1),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: _primaryColor, width: 2),
+                  ),
+                ),
+              ),
+            ),
+            if (!_isDescriptionFocused)
+              Positioned(
+                top: 0,
+                right: 0,
+                child: SizedBox(
+                  height: 50,
+                  width: 50,
+                  child: Lottie.asset('assets/json/description.json'),
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Text(
+          "Décrivez l'état général, les options, l'historique et toute information utile pour les acheteurs.",
+          style: GoogleFonts.poppins(
+            fontSize: 12,
+            color: Colors.grey,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildImagePicker() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          "Photos du véhicule*",
+          style: GoogleFonts.poppins(
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
+            color: Colors.black87,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          "Ajoutez au moins 3 photos de bonne qualité (max 10)",
+          style: GoogleFonts.poppins(
+            fontSize: 12,
+            color: Colors.grey,
+          ),
+        ),
+        const SizedBox(height: 12),
+        GestureDetector(
+          onTap: _pickImages,
+          child: Container(
+            height: 150,
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: Colors.grey[100],
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: Colors.grey[300]!,
+                width: 1.5,
+                style: BorderStyle.solid,
+              ),
+            ),
+            child: _selectedImages.isEmpty
+                ? Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Lottie.asset(
+                        'assets/json/add.json',
+                        height: 80,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        "Cliquez pour ajouter des photos",
+                        style: GoogleFonts.poppins(
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                    ],
+                  )
+                : Stack(
+                    children: [
+                      GridView.builder(
+                        padding: const EdgeInsets.all(8),
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 3,
+                          crossAxisSpacing: 8,
+                          mainAxisSpacing: 8,
+                        ),
+                        itemCount: _selectedImages.length,
+                        itemBuilder: (context, index) {
+                          return Stack(
+                            children: [
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: Image.file(
+                                  _selectedImages[index],
+                                  fit: BoxFit.cover,
+                                ),
+                              ),
+                              if (index == 0)
+                                Positioned(
+                                  top: 4,
+                                  left: 4,
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: _primaryColor,
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: Text(
+                                      "Principale",
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 10,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              Positioned(
+                                top: 4,
+                                right: 4,
+                                child: GestureDetector(
+                                  onTap: () => _removeImage(index),
+                                  child: Container(
+                                    padding: const EdgeInsets.all(2),
+                                    decoration: BoxDecoration(
+                                      color: Colors.red.withOpacity(0.8),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(
+                                      Icons.close,
+                                      size: 14,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+                      if (_selectedImages.length < 10)
+                        Positioned(
+                          bottom: 8,
+                          right: 8,
+                          child: FloatingActionButton.small(
+                            onPressed: _pickImages,
+                            backgroundColor: _primaryColor,
+                            child: const Icon(Icons.add, color: Colors.white),
+                          ),
+                        ),
+                    ],
+                  ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCard({
+    required List<Widget> children,
+    String? title,
+    String? lottieAsset,
+  }) {
+    return FadeIn(
+      duration: _animationDuration,
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        margin: const EdgeInsets.only(bottom: 16),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.95),
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.08),
+              blurRadius: 16,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (lottieAsset != null) ...[
+              Center(
+                child: SizedBox(
+                    height: 100,
+                    child: Lottie.asset(lottieAsset, fit: BoxFit.contain)),
+              ),
+            ],
+            const SizedBox(height: 10),
+            if (title != null) ...[
+              Center(
+                child: Column(
+                  children: [
+                    Text(
+                      title,
+                      style: GoogleFonts.poppins(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      height: 4,
+                      width: 80,
+                      decoration: BoxDecoration(
+                        color:
+                            _secondaryColor, // Utilisation de la couleur mauve
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+            ],
+            ...children,
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStyledTextField(
+    String label,
+    TextEditingController controller, {
+    int maxLines = 1,
+    TextInputType? keyboardType,
+    String? Function(String?)? validator,
+  }) {
+    return TextFormField(
+      controller: controller,
+      maxLines: maxLines,
+      keyboardType: keyboardType,
+      validator: validator,
+      style: GoogleFonts.poppins(fontSize: 15, color: Colors.black87),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: GoogleFonts.poppins(fontSize: 14),
+        filled: true,
+        fillColor: Colors.white.withOpacity(0.9),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Colors.grey, width: 1),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: _primaryColor, width: 2),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Colors.red, width: 1),
+        ),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 12,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCheckbox(
+    String label,
+    bool value,
+    ValueChanged<bool?> onChanged,
+  ) {
+    return Theme(
+      data: Theme.of(context).copyWith(
+        unselectedWidgetColor: Colors.grey,
+      ),
+      child: CheckboxListTile(
+        contentPadding: EdgeInsets.zero,
+        title: Text(
+          label,
+          style: GoogleFonts.poppins(fontSize: 14),
+        ),
+        value: value,
+        onChanged: onChanged,
+        controlAffinity: ListTileControlAffinity.leading,
+        activeColor: _primaryColor,
+        dense: true,
+      ),
+    );
   }
 }

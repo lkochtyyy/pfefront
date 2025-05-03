@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:pfefront/data/models/Model%20Favori.dart';
 
 class FavoriRepository {
-  final String baseUrl = 'http://10.0.2.2:3000/favoris';
+  final String baseUrl = 'http://192.168.0.8:3000/favoris';
 
   Future<void> ajouterFavori(int userId, int carId) async {
     final response = await http.post(
