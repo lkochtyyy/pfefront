@@ -5,6 +5,7 @@ import 'package:lottie/lottie.dart';
 import '../blocs/resetpass/reset_password_bloc.dart';
 import '../blocs/resetpass/reset_password_event.dart';
 import '../blocs/resetpass/reset_password_state.dart';
+import 'package:pfefront/pages/login.dart';
 
 class ResetPasswordApp extends StatelessWidget {
   final String email;
@@ -57,6 +58,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
   final FocusNode _confirmPasswordFocus = FocusNode();
 
   double _scale = 1.0;
+  bool _isLoading = false;
 
   void _onTapDown(_) => setState(() => _scale = 0.95);
   void _onTapUp(_) => setState(() => _scale = 1.0);
@@ -75,6 +77,8 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
 
   void _resetPassword() {
     if (_formKey.currentState!.validate()) {
+      setState(() => _isLoading = true);
+
       context.read<ResetPasswordBloc>().add(
             UpdatePasswordEvent(
               email: widget.email,
@@ -123,20 +127,61 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                     ),
                     const SizedBox(height: 30),
                     BlocListener<ResetPasswordBloc, ResetPasswordState>(
-                      listener: (context, state) {
+                      listener: (context, state) async {
                         if (state is ResetPasswordSuccess) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Row(
+                          setState(() => _isLoading = false);
+
+                          await showModalBottomSheet(
+                            context: context,
+                            isDismissible: false,
+                            shape: const RoundedRectangleBorder(
+                              borderRadius: BorderRadius.vertical(
+                                  top: Radius.circular(30)),
+                            ),
+                            builder: (_) => Padding(
+                              padding: const EdgeInsets.all(24.0),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Icon(Icons.check_circle, color: Colors.teal),
-                                  SizedBox(width: 8),
-                                  Text("Mot de passe réinitialisé avec succès !"),
+                                  Lottie.asset('assets/json/Locked.json',
+                                      height: 150),
+                                  const SizedBox(height: 20),
+                                  const Text(
+                                    'Mot de passe réinitialisé avec succès !',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w600),
+                                  ),
+                                  const SizedBox(height: 20),
+                                  ElevatedButton(
+                                    onPressed: () {
+                                      Navigator.of(context).pop();
+                                      Navigator.of(context).pushReplacement(
+                                        MaterialPageRoute(
+                                            builder: (_) => const LoginPage()),
+                                      );
+                                    },
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: const Color(0xFF50C2C9),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(20),
+                                      ),
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 24, vertical: 12),
+                                    ),
+                                    child: const Text(
+                                      'Revenir pour se connecter',
+                                      style: TextStyle(
+                                          color: Colors.white, fontSize: 16),
+                                    ),
+                                  ),
                                 ],
                               ),
                             ),
                           );
                         } else if (state is ResetPasswordFailure) {
+                          setState(() => _isLoading = false);
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(content: Text(state.error)),
                           );
@@ -165,14 +210,17 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                               ],
                             ),
                             alignment: Alignment.center,
-                            child: Text(
-                              "Réinitialiser",
-                              style: GoogleFonts.poppins(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
+                            child: _isLoading
+                                ? const CircularProgressIndicator(
+                                    color: Colors.white)
+                                : Text(
+                                    "Réinitialiser",
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                    ),
+                                  ),
                           ),
                         ),
                       ),
@@ -242,8 +290,9 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
           controller: controller,
           focusNode: focusNode,
           obscureText: isPassword,
-          textInputAction:
-              nextFocusNode != null ? TextInputAction.next : TextInputAction.done,
+          textInputAction: nextFocusNode != null
+              ? TextInputAction.next
+              : TextInputAction.done,
           onEditingComplete: () {
             if (nextFocusNode != null) {
               FocusScope.of(context).requestFocus(nextFocusNode);

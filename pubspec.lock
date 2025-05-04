@@ -608,6 +608,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.4.1"
+  show_more_text_popup:
+    dependency: "direct main"
+    description:
+      name: show_more_text_popup
+      sha256: "02dbd3db7f10961453904c12e8322bd1364bc513e9cbb6a8e0a8874728a9d504"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.3.0"
   sky_engine:
     dependency: transitive
     description: flutter

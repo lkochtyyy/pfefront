@@ -63,9 +63,11 @@ class _FeaturedCarsPageState extends State<FeaturedCarsPage> {
     if (userId != null) {
       // Fetch user's favorites
       context.read<FavoriBloc>().add(GetFavoris(int.parse(userId)));
+      print("emchiiiiiiiiiiiiiiiiiiiiiiiiiiiii");
 
       // Fetch car announcements
       context.read<CarAnnouncementBloc>().add(FetchAnnouncements());
+      print("hayaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
     } else {
       print('Error: userId not found in SharedPreferences.');
     }
@@ -82,7 +84,7 @@ class _FeaturedCarsPageState extends State<FeaturedCarsPage> {
           });
         } else if (state is FavoriLoading) {
           setState(() {
-            isFavorisLoading = true; 
+            isFavorisLoading = true;
             print("te7cheeeeeee");
           });
         }
@@ -103,19 +105,24 @@ class _FeaturedCarsPageState extends State<FeaturedCarsPage> {
                   Expanded(
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: BlocBuilder<CarAnnouncementBloc, CarAnnouncementState>(
+                      child: BlocBuilder<CarAnnouncementBloc,
+                          CarAnnouncementState>(
                         builder: (context, state) {
                           if (isFavorisLoading) {
-                            return const Center(child: CircularProgressIndicator());
+                            return const Center(
+                                child: CircularProgressIndicator());
                           }
 
                           if (state is CarAnnouncementLoading) {
-                            return const Center(child: CircularProgressIndicator());
+                            return const Center(
+                                child: CircularProgressIndicator());
                           } else if (state is CarAnnouncementLoaded) {
                             print("Search Text: $_searchText");
-print("Announcements: ${state.announcements.map((a) => a.title).toList()}");
+                            print(
+                                "Announcements: ${state.announcements.map((a) => a.title).toList()}");
                             // Filter announcements by search text
-                            final List<CarAnnouncement> list = state.announcements
+                            final List<CarAnnouncement> list = state
+                                .announcements
                                 .where((a) => a.title
                                     .toLowerCase()
                                     .contains(_searchText.toLowerCase()))
@@ -148,7 +155,8 @@ print("Announcements: ${state.announcements.map((a) => a.title).toList()}");
                                         Navigator.push(
                                           context,
                                           MaterialPageRoute(
-                                            builder: (context) => CarDetailPage(annonceId: '${car.id}'),
+                                            builder: (context) => CarDetailPage(
+                                                annonceId: '${car.id}'),
                                           ),
                                         );
                                       },
@@ -160,34 +168,56 @@ print("Announcements: ${state.announcements.map((a) => a.title).toList()}");
                                         icon: Icon(
                                           favorisIds.contains(car.id)
                                               ? Icons.favorite // ❤️ filled
-                                              : Icons.favorite_border, // 🤍 empty
-                                          color: const Color.fromARGB(255, 250, 2, 2),
+                                              : Icons
+                                                  .favorite_border, // 🤍 empty
+                                          color: const Color.fromARGB(
+                                              255, 250, 2, 2),
                                         ),
                                         onPressed: () async {
-                                          final prefs = await SharedPreferences.getInstance();
-                                          final userId = prefs.getString('userId');
+                                          final prefs = await SharedPreferences
+                                              .getInstance();
+                                          final userId =
+                                              prefs.getString('userId');
                                           if (userId != null) {
-                                            final isFavori = favorisIds.contains(car.id);
+                                            final isFavori =
+                                                favorisIds.contains(car.id);
                                             if (!isFavori) {
                                               context.read<FavoriBloc>().add(
-                                                AjouterFavori(carId: car.id!, userId: int.parse(userId)),
-                                              );
-                                              setState(() => favorisIds.add(car.id!));
-                                              ScaffoldMessenger.of(context).showSnackBar(
-                                                const SnackBar(content: Text('Added to favorites')),
+                                                    AjouterFavori(
+                                                        carId: car.id!,
+                                                        userId:
+                                                            int.parse(userId)),
+                                                  );
+                                              setState(() =>
+                                                  favorisIds.add(car.id!));
+                                              ScaffoldMessenger.of(context)
+                                                  .showSnackBar(
+                                                const SnackBar(
+                                                    content: Text(
+                                                        'Added to favorites')),
                                               );
                                             } else {
                                               context.read<FavoriBloc>().add(
-                                                SupprimerFavori(carId: car.id!, userId: int.parse(userId)),
-                                              );
-                                              setState(() => favorisIds.remove(car.id!));
-                                              ScaffoldMessenger.of(context).showSnackBar(
-                                                const SnackBar(content: Text('Removed from favorites')),
+                                                    SupprimerFavori(
+                                                        carId: car.id!,
+                                                        userId:
+                                                            int.parse(userId)),
+                                                  );
+                                              setState(() =>
+                                                  favorisIds.remove(car.id!));
+                                              ScaffoldMessenger.of(context)
+                                                  .showSnackBar(
+                                                const SnackBar(
+                                                    content: Text(
+                                                        'Removed from favorites')),
                                               );
                                             }
                                           } else {
-                                            ScaffoldMessenger.of(context).showSnackBar(
-                                              const SnackBar(content: Text('User not identified')),
+                                            ScaffoldMessenger.of(context)
+                                                .showSnackBar(
+                                              const SnackBar(
+                                                  content: Text(
+                                                      'User not identified')),
                                             );
                                           }
                                         },
@@ -408,7 +438,7 @@ print("Announcements: ${state.announcements.map((a) => a.title).toList()}");
               ),
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             ),
-            onPressed: () => _showFilterSheet(),
+            onPressed: () {},
             icon: const Icon(Icons.filter_alt_outlined, size: 18),
             label: Text(
               "Filter",
@@ -420,37 +450,6 @@ print("Announcements: ${state.announcements.map((a) => a.title).toList()}");
           ),
         ],
       ),
-    );
-  }
-
-  void _showFilterSheet() {
-    showModalBottomSheet(
-      context: context,
-      builder: (context) {
-        return Container(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Filter Options',
-                style: GoogleFonts.poppins(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 10),
-              // Add filter options here
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                },
-                child: const Text('Apply Filters'),
-              ),
-            ],
-          ),
-        );
-      },
     );
   }
 
@@ -517,7 +516,7 @@ class CarCard extends StatelessWidget {
   final VoidCallback? onTap;
 
   const CarCard({
-    super.key, 
+    super.key,
     required this.data,
     this.onTap,
   });
@@ -526,16 +525,17 @@ class CarCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final image = data['image'] as String;
     final priceFormatted = "\$${data['price'].toString().replaceAllMapped(
-      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-      (m) => '${m[1]},',
-    )}";
+          RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+          (m) => '${m[1]},',
+        )}";
 
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(12),
         constraints: BoxConstraints(
-          maxWidth: MediaQuery.of(context).size.width * 0.45, // Limit card width
+          maxWidth:
+              MediaQuery.of(context).size.width * 0.45, // Limit card width
         ),
         decoration: BoxDecoration(
           color: Colors.white,
@@ -567,12 +567,15 @@ class CarCard extends StatelessWidget {
                               width: double.infinity,
                               height: double.infinity,
                               fit: BoxFit.cover,
-                              loadingBuilder: (context, child, loadingProgress) {
+                              loadingBuilder:
+                                  (context, child, loadingProgress) {
                                 if (loadingProgress == null) return child;
                                 return Center(
                                   child: CircularProgressIndicator(
-                                    value: loadingProgress.expectedTotalBytes != null
-                                        ? loadingProgress.cumulativeBytesLoaded /
+                                    value: loadingProgress.expectedTotalBytes !=
+                                            null
+                                        ? loadingProgress
+                                                .cumulativeBytesLoaded /
                                             loadingProgress.expectedTotalBytes!
                                         : null,
                                   ),
@@ -595,7 +598,6 @@ class CarCard extends StatelessWidget {
                           color: Colors.white.withOpacity(0.8),
                           shape: BoxShape.circle,
                         ),
-                       
                       ),
                     ),
                   ],
@@ -607,8 +609,7 @@ class CarCard extends StatelessWidget {
             Text(
               data['title'],
               style: GoogleFonts.poppins(
-                fontSize: 16, 
-                fontWeight: FontWeight.w600),
+                  fontSize: 16, fontWeight: FontWeight.w600),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
@@ -630,8 +631,8 @@ class CarCard extends StatelessWidget {
                 const SizedBox(width: 9),
                 Flexible(
                   child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
                       color: _getStatusColor(data['status']),
                       borderRadius: BorderRadius.circular(12),
@@ -655,9 +656,9 @@ class CarCard extends StatelessWidget {
             Text(
               priceFormatted,
               style: GoogleFonts.poppins(
-                fontSize: 16, 
-                fontWeight: FontWeight.bold,
-                color: Colors.green[800]),
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.green[800]),
             ),
           ],
         ),
@@ -691,6 +692,7 @@ class CarCard extends StatelessWidget {
     }
   }
 }
+
 Route _createSearchRoute() {
   return PageRouteBuilder(
     pageBuilder: (context, animation, secondaryAnimation) => SearchCarsPage(),

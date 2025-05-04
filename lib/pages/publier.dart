@@ -1,11 +1,17 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lottie/lottie.dart';
 import 'package:animate_do/animate_do.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
+import 'package:pfefront/blocs/announcement/car_announcement_bloc.dart';
+import 'package:pfefront/data/models/announcement_model.dart';
 import 'package:pfefront/pages/mypubs.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class PublierAnnoncePage extends StatefulWidget {
   final Map<String, dynamic>? publicationData;
@@ -126,17 +132,18 @@ class _PublierAnnoncePageState extends State<PublierAnnoncePage>
     super.dispose();
   }
 
-  Future<void> _pickImages() async {
+  Future<void> _pickImage() async {
     try {
-      final List<XFile>? images = await _picker.pickMultiImage();
-      if (images != null && images.isNotEmpty) {
+      final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
+      if (image != null) {
         setState(() {
-          _selectedImages.addAll(images.map((image) => File(image.path)));
+          _selectedImages.clear(); // Supprime les images précédentes
+          _selectedImages.add(File(image.path)); // Ajoute la nouvelle image
         });
       }
     } on PlatformException catch (e) {
       _showErrorSnackbar(
-          'Erreur lors de la sélection des images: ${e.message}');
+          'Erreur lors de la sélection de l\'image: ${e.message}');
     }
   }
 
@@ -357,20 +364,9 @@ class _PublierAnnoncePageState extends State<PublierAnnoncePage>
                                 TextFormField(
                                   controller: _phoneController,
                                   keyboardType: TextInputType.phone,
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 14, // Taille de la police
-                                    color: Colors.black87, // Couleur du texte
-                                  ),
+                                  style: GoogleFonts.poppins(),
                                   decoration: InputDecoration(
                                     labelText: "Numéro de téléphone",
-                                    labelStyle: GoogleFonts.poppins(
-                                      fontSize: 14,
-                                      color: Colors.grey[600],
-                                    ),
-                                    hintStyle: GoogleFonts.poppins(
-                                      fontSize: 14,
-                                      color: Colors.grey[600],
-                                    ),
                                     prefixIcon: Padding(
                                       padding: const EdgeInsets.all(10),
                                       child: Lottie.asset(
@@ -518,15 +514,72 @@ class _PublierAnnoncePageState extends State<PublierAnnoncePage>
   }
 
   Future<void> _publish() async {
+    print("Méthode _publish appelée");
+
     if (!_validateCurrentPage()) return;
 
-    // Vérifier qu'au moins une image est sélectionnée
     if (_selectedImages.isEmpty) {
+      print("Erreur : aucune image sélectionnée");
       _showErrorSnackbar('Veuillez ajouter au moins une image');
       return;
     }
 
-    await _showPhoneNumberDialog();
+    final prefs = await SharedPreferences.getInstance();
+    final userId = prefs.getString('userId');
+    if (userId == null) {
+      print("Erreur : userId est null");
+      _showErrorSnackbar('Erreur : utilisateur non connecté');
+      return;
+    }
+    print("userId: $userId");
+
+    // Convertir les options en chaîne de caractères
+    final optionsString = [
+      if (_bluetooth) 'bluetooth',
+      if (_alarm) 'alarm',
+      if (_cruise) 'cruise',
+      if (_parking) 'parking',
+    ].join(',');
+
+    try {
+      // Convertir les champs numériques
+      final annee = int.tryParse(_anneeController.text.trim()) ?? 0;
+      final kilometrage = int.tryParse(_kilometrageController.text.trim()) ?? 0;
+      final prix = double.tryParse(_prixController.text.trim()) ?? 0.0;
+
+      // Préparer les données de l'annonce
+      final announcement = CarAnnouncement(
+        title: _titreController.text,
+        carCondition: _condition,
+        year: annee,
+        brand: _marqueController.text,
+        model: _modeleController.text,
+        fuelType: _carburant,
+        mileage: kilometrage,
+        options: optionsString,
+        location: _lieuController.text,
+        price: prix,
+        description: _descriptionController.text,
+        imageFile: _selectedImages.first,
+        imageUrl: '',
+        vendorId: int.parse(userId),
+      );
+
+      print("Données de l'annonce : $announcement");
+
+      // Ajouter l'événement au BLoC
+      print("Ajout de l'événement CreateAnnouncement au BLoC");
+      context.read<CarAnnouncementBloc>().add(
+            CreateAnnouncement(
+              userId: userId,
+              announcement: announcement,
+              imageFile: _selectedImages.first,
+            ),
+          );
+    } catch (e) {
+      print("Erreur lors de l'ajout de l'événement au BLoC : $e");
+      _showErrorSnackbar('Une erreur est survenue lors de la publication.');
+    }
   }
 
   bool _validateCurrentPage() {
@@ -548,7 +601,7 @@ class _PublierAnnoncePageState extends State<PublierAnnoncePage>
         isValid = _validateFields([_lieuController, _prixController]);
         break;
     }
-
+    print("Validation de la page $_currentPage : $isValid");
     if (isValid) {
       setState(() {
         _completedSections[_currentPage] = true;
@@ -589,68 +642,87 @@ class _PublierAnnoncePageState extends State<PublierAnnoncePage>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      extendBodyBehindAppBar: true,
-      appBar: AppBar(
-        title: Text(
-          widget.publicationData != null
-              ? "Modifier l'annonce"
-              : "Publier une annonce",
-          style: GoogleFonts.poppins(
-            fontWeight: FontWeight.w600,
-            fontSize: 18,
-            color: Colors.black87,
+    return BlocListener<CarAnnouncementBloc, CarAnnouncementState>(
+      listener: (context, state) {
+        if (state is CarAnnouncementLoading) {
+          setState(() => _isLoading = true);
+        } else if (state is AnnouncementCreated) {
+          setState(() => _isLoading = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Annonce publiée avec succès !')),
+          );
+          Navigator.pop(context); // Retour à la page précédente
+        } else if (state is CarAnnouncementError) {
+          setState(() => _isLoading = false);
+          _showErrorSnackbar(state.error);
+        }
+      },
+      child: Scaffold(
+        extendBodyBehindAppBar: true,
+        appBar: AppBar(
+          title: Text(
+            widget.publicationData != null
+                ? "Modifier l'annonce"
+                : "Publier une annonce",
+            style: GoogleFonts.poppins(
+              fontWeight: FontWeight.w600,
+              fontSize: 18,
+              color: Colors.black87,
+            ),
           ),
-        ),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        foregroundColor: Colors.black,
-        actions: [
-          if (widget.publicationData != null)
-            IconButton(
-              icon: const Icon(Icons.delete),
-              onPressed: () => _showDeleteConfirmationDialog(),
-            ),
-        ],
-      ),
-      body: AnimatedBuilder(
-        animation: _bgController,
-        builder: (context, child) {
-          return Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [_color1.value!, _color2.value!],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          foregroundColor: Colors.black,
+          actions: [
+            if (widget.publicationData != null)
+              IconButton(
+                icon: const Icon(Icons.delete),
+                onPressed: () => _showDeleteConfirmationDialog(),
               ),
-            ),
-            child: SafeArea(
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  children: [
-                    _buildPageIndicator(),
-                    Expanded(
-                      child: PageView(
-                        controller: _pageController,
-                        physics: const NeverScrollableScrollPhysics(),
-                        onPageChanged: (index) {
-                          setState(() => _currentPage = index);
-                        },
-                        children: [
-                          _buildInfoSection(),
-                          _buildFeaturesSection(),
-                          _buildDetailsSection(),
-                        ],
-                      ),
-                    ),
-                    if (_currentPage == 2) _buildSubmitButton(),
-                  ],
+          ],
+        ),
+        body: AnimatedBuilder(
+          animation: _bgController,
+          builder: (context, child) {
+            return Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [_color1.value!, _color2.value!],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
               ),
-            ),
-          );
-        },
+              child: SafeArea(
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    children: [
+                      _buildPageIndicator(),
+                      Expanded(
+                        child: PageView(
+                          controller: _pageController,
+                          physics: const NeverScrollableScrollPhysics(),
+                          onPageChanged: (index) {
+                            setState(() {
+                              _currentPage = index;
+                              print("Page actuelle : $_currentPage");
+                            });
+                          },
+                          children: [
+                            _buildInfoSection(),
+                            _buildFeaturesSection(),
+                            _buildDetailsSection(),
+                          ],
+                        ),
+                      ),
+                      if (_currentPage == 2) _buildSubmitButton(),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
       ),
     );
   }
@@ -978,8 +1050,20 @@ class _PublierAnnoncePageState extends State<PublierAnnoncePage>
                 onChanged: (val) => setState(() => _boite = val!),
               ),
               const SizedBox(height: 20),
+
+              _buildLottieDropdown(
+                animationPath:
+                    'assets/json/carinfo.json', // Remplacez par une animation appropriée si disponible
+                label: "Condition*",
+                value: _condition,
+                items: const ["Nouveau", "Ancien"],
+                onChanged: (val) => setState(() => _condition = val!),
+              ),
+              const SizedBox(height: 20),
+
               _buildDivider(),
               _buildOptionsExpansionTile(),
+
               const SizedBox(height: 20),
               _buildNavigationButtons(),
             ],
@@ -1257,7 +1341,7 @@ class _PublierAnnoncePageState extends State<PublierAnnoncePage>
                   color: Colors.black87,
                 ),
                 decoration: InputDecoration(
-                  hintText: "Décrivez votre véhicule...",
+                  hintText: "Décrivez votre véhicule en détail...",
                   hintStyle: GoogleFonts.poppins(
                     // Appliquer la police Poppins au texte d'indice
                     fontSize: 14,
@@ -1305,7 +1389,7 @@ class _PublierAnnoncePageState extends State<PublierAnnoncePage>
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          "Photos du véhicule*",
+          "Photo du véhicule*",
           style: GoogleFonts.poppins(
             fontSize: 16,
             fontWeight: FontWeight.w500,
@@ -1314,7 +1398,7 @@ class _PublierAnnoncePageState extends State<PublierAnnoncePage>
         ),
         const SizedBox(height: 8),
         Text(
-          "Ajoutez au moins 3 photos de bonne qualité (max 10)",
+          "Ajoutez une photo de bonne qualité",
           style: GoogleFonts.poppins(
             fontSize: 12,
             color: Colors.grey,
@@ -1322,7 +1406,7 @@ class _PublierAnnoncePageState extends State<PublierAnnoncePage>
         ),
         const SizedBox(height: 12),
         GestureDetector(
-          onTap: _pickImages,
+          onTap: _pickImage,
           child: Container(
             height: 150,
             width: double.infinity,
@@ -1345,7 +1429,7 @@ class _PublierAnnoncePageState extends State<PublierAnnoncePage>
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        "Cliquez pour ajouter des photos",
+                        "Cliquez pour ajouter une photo",
                         style: GoogleFonts.poppins(
                           color: Colors.grey[600],
                         ),
@@ -1354,78 +1438,38 @@ class _PublierAnnoncePageState extends State<PublierAnnoncePage>
                   )
                 : Stack(
                     children: [
-                      GridView.builder(
-                        padding: const EdgeInsets.all(8),
-                        gridDelegate:
-                            const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 3,
-                          crossAxisSpacing: 8,
-                          mainAxisSpacing: 8,
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Image.file(
+                          _selectedImages.first,
+                          fit: BoxFit.cover,
+                          width: double.infinity,
+                          height: double.infinity,
                         ),
-                        itemCount: _selectedImages.length,
-                        itemBuilder: (context, index) {
-                          return Stack(
-                            children: [
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(8),
-                                child: Image.file(
-                                  _selectedImages[index],
-                                  fit: BoxFit.cover,
-                                ),
-                              ),
-                              if (index == 0)
-                                Positioned(
-                                  top: 4,
-                                  left: 4,
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 6, vertical: 2),
-                                    decoration: BoxDecoration(
-                                      color: _primaryColor,
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    child: Text(
-                                      "Principale",
-                                      style: GoogleFonts.poppins(
-                                        fontSize: 10,
-                                        color: Colors.white,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              Positioned(
-                                top: 4,
-                                right: 4,
-                                child: GestureDetector(
-                                  onTap: () => _removeImage(index),
-                                  child: Container(
-                                    padding: const EdgeInsets.all(2),
-                                    decoration: BoxDecoration(
-                                      color: Colors.red.withOpacity(0.8),
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: const Icon(
-                                      Icons.close,
-                                      size: 14,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          );
-                        },
                       ),
-                      if (_selectedImages.length < 10)
-                        Positioned(
-                          bottom: 8,
-                          right: 8,
-                          child: FloatingActionButton.small(
-                            onPressed: _pickImages,
-                            backgroundColor: _primaryColor,
-                            child: const Icon(Icons.add, color: Colors.white),
+                      Positioned(
+                        top: 4,
+                        right: 4,
+                        child: GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              _selectedImages.clear();
+                            });
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.all(2),
+                            decoration: BoxDecoration(
+                              color: Colors.red.withOpacity(0.8),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.close,
+                              size: 14,
+                              color: Colors.white,
+                            ),
                           ),
                         ),
+                      ),
                     ],
                   ),
           ),
