@@ -31,7 +31,7 @@ class FeaturedCarsPage extends StatefulWidget {
 class _FeaturedCarsPageState extends State<FeaturedCarsPage> {
   late stt.SpeechToText _speech;
   bool _isListening = false;
-  String _searchText = '';
+  final String _searchText = '';
   bool isAscending = true;
   List<int> favorisIds = [];
   bool isFavorisLoading = true;
@@ -85,7 +85,6 @@ class _FeaturedCarsPageState extends State<FeaturedCarsPage> {
         } else if (state is FavoriLoading) {
           setState(() {
             isFavorisLoading = true;
-            print("te7cheeeeeee");
           });
         }
       },
@@ -502,7 +501,7 @@ class _FeaturedCarsPageState extends State<FeaturedCarsPage> {
           case 3:
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (context) => FavorisPage()),
+              MaterialPageRoute(builder: (context) => const FavorisPage()),
             );
             break;
         }
@@ -561,33 +560,23 @@ class CarCard extends StatelessWidget {
                   children: [
                     ClipRRect(
                       borderRadius: BorderRadius.circular(15),
-                      child: image.startsWith('http')
-                          ? Image.network(
-                              image,
-                              width: double.infinity,
-                              height: double.infinity,
-                              fit: BoxFit.cover,
-                              loadingBuilder:
-                                  (context, child, loadingProgress) {
-                                if (loadingProgress == null) return child;
-                                return Center(
-                                  child: CircularProgressIndicator(
-                                    value: loadingProgress.expectedTotalBytes !=
-                                            null
-                                        ? loadingProgress
-                                                .cumulativeBytesLoaded /
-                                            loadingProgress.expectedTotalBytes!
-                                        : null,
-                                  ),
-                                );
-                              },
-                            )
-                          : Image.asset(
-                              image,
-                              width: double.infinity,
-                              height: double.infinity,
-                              fit: BoxFit.cover,
+                      child: Image.network(
+                        'http://10.0.2.2:3000/fetchCarImages/${data['image']}',
+                        width: double.infinity,
+                        height: double.infinity,
+                        fit: BoxFit.cover,
+                        loadingBuilder: (context, child, loadingProgress) {
+                          if (loadingProgress == null) return child;
+                          return Center(
+                            child: CircularProgressIndicator(
+                              value: loadingProgress.expectedTotalBytes != null
+                                  ? loadingProgress.cumulativeBytesLoaded /
+                                      loadingProgress.expectedTotalBytes!
+                                  : null,
                             ),
+                          );
+                        },
+                      ),
                     ),
                     Positioned(
                       top: 8,
@@ -695,7 +684,8 @@ class CarCard extends StatelessWidget {
 
 Route _createSearchRoute() {
   return PageRouteBuilder(
-    pageBuilder: (context, animation, secondaryAnimation) => SearchCarsPage(),
+    pageBuilder: (context, animation, secondaryAnimation) =>
+        const SearchCarsPage(),
     transitionsBuilder: (context, animation, secondaryAnimation, child) {
       const beginOffset = Offset(0.0, 1.0);
       const endOffset = Offset.zero;

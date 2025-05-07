@@ -49,7 +49,7 @@ class _LoadingTransitionPageState extends State<LoadingTransitionPage>
         context,
         PageRouteBuilder(
           transitionDuration: const Duration(milliseconds: 800),
-          pageBuilder: (_, __, ___) => FeaturedCarsPage(
+          pageBuilder: (_, __, ___) => const FeaturedCarsPage(
         
           ),
           transitionsBuilder: (_, animation, __, child) {

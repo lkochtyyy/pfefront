@@ -75,9 +75,9 @@ class MyApp extends StatelessWidget {
             ),
           ),
         ],
-        child: MaterialApp(
+        child: const MaterialApp(
           debugShowCheckedModeBanner: false,
-          home: const OnboardingScreen(),
+          home: OnboardingScreen(),
         ),
       ),
     );

@@ -12,7 +12,6 @@ import 'package:pfefront/pages/messagerie.dart';
 import 'package:pfefront/pages/publier.dart';
 import 'package:pfefront/pages/pagedacceuil.dart';
 import 'package:pfefront/pages/viewpub.dart';
-import 'package:pfefront/pages/viewpub.dart';
 
 class FavorisPage extends StatefulWidget {
   const FavorisPage({super.key});

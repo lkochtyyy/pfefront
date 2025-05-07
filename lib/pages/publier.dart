@@ -173,15 +173,15 @@ class _PublierAnnoncePageState extends State<PublierAnnoncePage>
                 bottom: MediaQuery.of(context).viewInsets.bottom,
               ),
               child: Container(
-                decoration: BoxDecoration(
+                decoration: const BoxDecoration(
                   color: Colors.white,
                   borderRadius:
-                      const BorderRadius.vertical(top: Radius.circular(24)),
+                      BorderRadius.vertical(top: Radius.circular(24)),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black12,
                       blurRadius: 15,
-                      offset: const Offset(0, -3),
+                      offset: Offset(0, -3),
                     ),
                   ],
                 ),
@@ -513,41 +513,66 @@ class _PublierAnnoncePageState extends State<PublierAnnoncePage>
     if (mounted) Navigator.pop(context);
   }
 
-  Future<void> _publish() async {
-    print("Méthode _publish appelée");
+  // In the _publish method of PublierAnnoncePage, replace with:
+Future<void> _publish() async {
+  print("Méthode _publish appelée");
 
-    if (!_validateCurrentPage()) return;
+  if (!_validateCurrentPage()) return;
 
-    if (_selectedImages.isEmpty) {
-      print("Erreur : aucune image sélectionnée");
-      _showErrorSnackbar('Veuillez ajouter au moins une image');
-      return;
-    }
+  if (_selectedImages.isEmpty && widget.publicationData == null) {
+    print("Erreur : aucune image sélectionnée");
+    _showErrorSnackbar('Veuillez ajouter au moins une image');
+    return;
+  }
 
-    final prefs = await SharedPreferences.getInstance();
-    final userId = prefs.getString('userId');
-    if (userId == null) {
-      print("Erreur : userId est null");
-      _showErrorSnackbar('Erreur : utilisateur non connecté');
-      return;
-    }
-    print("userId: $userId");
+  final prefs = await SharedPreferences.getInstance();
+  final userId = prefs.getString('userId');
+  if (userId == null) {
+    print("Erreur : userId est null");
+    _showErrorSnackbar('Erreur : utilisateur non connecté');
+    return;
+  }
 
-    // Convertir les options en chaîne de caractères
-    final optionsString = [
-      if (_bluetooth) 'bluetooth',
-      if (_alarm) 'alarm',
-      if (_cruise) 'cruise',
-      if (_parking) 'parking',
-    ].join(',');
+  // Convertir les options en chaîne de caractères
+  final optionsString = [
+    if (_bluetooth) 'bluetooth',
+    if (_alarm) 'alarm',
+    if (_cruise) 'cruise',
+    if (_parking) 'parking',
+  ].join(',');
 
-    try {
-      // Convertir les champs numériques
-      final annee = int.tryParse(_anneeController.text.trim()) ?? 0;
-      final kilometrage = int.tryParse(_kilometrageController.text.trim()) ?? 0;
-      final prix = double.tryParse(_prixController.text.trim()) ?? 0.0;
+  try {
+    // Convertir les champs numériques
+    final annee = int.tryParse(_anneeController.text.trim()) ?? 0;
+    final kilometrage = int.tryParse(_kilometrageController.text.trim()) ?? 0;
+    final prix = double.tryParse(_prixController.text.trim()) ?? 0.0;
 
-      // Préparer les données de l'annonce
+    if (widget.publicationData != null) {
+      // Mode édition - Mise à jour
+      final updatedData = {
+        'id': widget.publicationData!['id'],
+        'title': _titreController.text,
+        'car_condition': _condition,
+        'year': annee,
+        'brand': _marqueController.text,
+        'model': _modeleController.text,
+        'fuel_type': _carburant,
+        'mileage': kilometrage,
+        'options': optionsString,
+        'location': _lieuController.text,
+        'price': prix,
+        'description': _descriptionController.text,
+        'userId': userId,
+      };
+
+      print("Données mises à jour : $updatedData");
+
+      // Ajouter l'événement de mise à jour au BLoC
+      context.read<CarAnnouncementBloc>().add(
+            UpdateAnnouncement(updatedData),
+          );
+    } else {
+      // Mode création - Nouvelle annonce
       final announcement = CarAnnouncement(
         title: _titreController.text,
         carCondition: _condition,
@@ -567,8 +592,7 @@ class _PublierAnnoncePageState extends State<PublierAnnoncePage>
 
       print("Données de l'annonce : $announcement");
 
-      // Ajouter l'événement au BLoC
-      print("Ajout de l'événement CreateAnnouncement au BLoC");
+      // Ajouter l'événement de création au BLoC
       context.read<CarAnnouncementBloc>().add(
             CreateAnnouncement(
               userId: userId,
@@ -576,11 +600,12 @@ class _PublierAnnoncePageState extends State<PublierAnnoncePage>
               imageFile: _selectedImages.first,
             ),
           );
-    } catch (e) {
-      print("Erreur lors de l'ajout de l'événement au BLoC : $e");
-      _showErrorSnackbar('Une erreur est survenue lors de la publication.');
     }
+  } catch (e) {
+    print("Erreur lors de l'ajout de l'événement au BLoC : $e");
+    _showErrorSnackbar('Une erreur est survenue lors de la publication.');
   }
+}
 
   bool _validateCurrentPage() {
     bool isValid = false;
@@ -649,7 +674,7 @@ class _PublierAnnoncePageState extends State<PublierAnnoncePage>
         } else if (state is AnnouncementCreated) {
           setState(() => _isLoading = false);
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Annonce publiée avec succès !')),
+            const SnackBar(content: Text('Annonce publiée avec succès !')),
           );
           Navigator.pop(context); // Retour à la page précédente
         } else if (state is CarAnnouncementError) {
@@ -987,8 +1012,9 @@ class _PublierAnnoncePageState extends State<PublierAnnoncePage>
                   controller: _anneeController,
                   keyboardType: TextInputType.number,
                   validator: (value) {
-                    if (value?.isEmpty ?? true)
+                    if (value?.isEmpty ?? true) {
                       return 'Ce champ est obligatoire';
+                    }
                     final year = int.tryParse(value!);
                     if (year == null ||
                         year < 1900 ||
@@ -1004,8 +1030,9 @@ class _PublierAnnoncePageState extends State<PublierAnnoncePage>
                   controller: _kilometrageController,
                   keyboardType: TextInputType.number,
                   validator: (value) {
-                    if (value?.isEmpty ?? true)
+                    if (value?.isEmpty ?? true) {
                       return 'Ce champ est obligatoire';
+                    }
                     final km = int.tryParse(value!);
                     if (km == null || km < 0) return 'Valeur invalide';
                     return null;
@@ -1097,8 +1124,9 @@ class _PublierAnnoncePageState extends State<PublierAnnoncePage>
                   controller: _prixController,
                   keyboardType: TextInputType.number,
                   validator: (value) {
-                    if (value?.isEmpty ?? true)
+                    if (value?.isEmpty ?? true) {
                       return 'Ce champ est obligatoire';
+                    }
                     final price = double.tryParse(value!);
                     if (price == null || price <= 0) return 'Prix invalide';
                     return null;

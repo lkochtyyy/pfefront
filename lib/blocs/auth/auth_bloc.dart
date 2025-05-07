@@ -1,5 +1,4 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:pfefront/data/models/user_model.dart';
 import '../../data/repositories/auth_repository.dart';
 import 'auth_event.dart';
 import 'auth_state.dart';

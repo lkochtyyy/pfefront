@@ -56,11 +56,11 @@ class _TrendingProductsPageState extends State<TrendingProductsPage> {
         child: Column(
           children: [
             const SizedBox(height: 10),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: const [
+                children: [
                   Icon(Icons.menu, size: 28),
                   CircleAvatar(
                     radius: 18,
@@ -107,7 +107,7 @@ class _TrendingProductsPageState extends State<TrendingProductsPage> {
                       ElevatedButton.icon(
                         style: ElevatedButton.styleFrom(
                           elevation: 3,
-                          backgroundColor: Color.fromARGB(255, 110, 224, 230),
+                          backgroundColor: const Color.fromARGB(255, 110, 224, 230),
                           foregroundColor: Colors.black,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8),
@@ -121,7 +121,7 @@ class _TrendingProductsPageState extends State<TrendingProductsPage> {
                       ElevatedButton.icon(
                         style: ElevatedButton.styleFrom(
                           elevation: 3,
-                          backgroundColor: Color.fromARGB(255, 110, 224, 230),
+                          backgroundColor: const Color.fromARGB(255, 110, 224, 230),
                           foregroundColor: Colors.black,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8),
@@ -219,11 +219,11 @@ class CarCard extends StatelessWidget {
       decoration: BoxDecoration(
         color : Colors.white ,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [
+        boxShadow: const [
           BoxShadow(
             color: Colors.black12,
             blurRadius: 10,
-            offset: const Offset(0, 5),
+            offset: Offset(0, 5),
           )
         ],
       ),
@@ -241,7 +241,7 @@ class CarCard extends StatelessWidget {
                     fit: BoxFit.cover,
                   ),
                 ),
-                Positioned(
+                const Positioned(
                   top: 8,
                   right: 8,
                   child: Icon(Icons.favorite_border, color: Colors.black54),
@@ -258,8 +258,8 @@ class CarCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 6),
-          Row(
-            children: const [
+          const Row(
+            children: [
               Icon(Icons.star, size: 16, color: Colors.black87),
               SizedBox(width: 4),
               Text(

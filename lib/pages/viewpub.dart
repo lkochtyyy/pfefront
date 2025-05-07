@@ -23,8 +23,8 @@ class CarDetailPage extends StatefulWidget {
 
 class _CarDetailPageState extends State<CarDetailPage> {
   late Future<CarAnnouncement> _carFuture;
-  int _currentImageIndex = 0;
-  double _currentRating = 4.5;
+  final int _currentImageIndex = 0;
+  final double _currentRating = 4.5;
   double _userRating = 0;
 
   @override
@@ -202,6 +202,7 @@ class _CarDetailPageState extends State<CarDetailPage> {
                       const SizedBox(height: 20),
 
                       // Image
+                      // In the Hero widget where you display the main car image
                       Hero(
                         tag: 'car-image-${car.id}',
                         child: Container(
@@ -209,7 +210,8 @@ class _CarDetailPageState extends State<CarDetailPage> {
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(16),
                             image: DecorationImage(
-                              image: NetworkImage(car.imageUrl),
+                              image: NetworkImage(
+                                  'http://10.0.2.2:3000/fetchCarImages/${car.imageUrl}'),
                               fit: BoxFit.cover,
                             ),
                           ),
@@ -263,7 +265,7 @@ class _CarDetailPageState extends State<CarDetailPage> {
                               // Options dynamiques
                               Expanded(
                                 child: Text(
-                                  "${car.options}",
+                                  car.options,
                                   style: GoogleFonts.poppins(
                                     fontSize: 14,
                                     fontWeight: FontWeight.w500,

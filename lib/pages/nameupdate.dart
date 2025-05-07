@@ -10,7 +10,7 @@ import 'package:pfefront/utils/shared_prefs_helper.dart';
 
 
 class NameUser extends StatefulWidget {
-  const NameUser({Key? key}) : super(key: key);
+  const NameUser({super.key});
 
   @override
   State<NameUser> createState() => _NameUserState();

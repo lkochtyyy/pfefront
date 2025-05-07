@@ -181,7 +181,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                    builder: (context) => UserAccountPage(),
+                    builder: (context) => const UserAccountPage(),
                     ),
                   );
                   }
@@ -197,7 +197,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => MyPubsPage(),
+          builder: (context) => const MyPubsPage(),
         ),
       ).then((_) {
         // Recharger les annonces après le retour

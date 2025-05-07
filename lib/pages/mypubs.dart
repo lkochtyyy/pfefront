@@ -3,7 +3,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lottie/lottie.dart';
 import 'package:pfefront/blocs/announcement/car_announcement_bloc.dart';
-import 'package:pfefront/data/models/announcement_model.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'publier.dart';
 
