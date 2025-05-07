@@ -17,15 +17,14 @@ class _MyPubsPageState extends State<MyPubsPage> {
   @override
   void initState() {
     super.initState();
-    _loadUserIdAndFetchAnnouncements(); // Charger le userId et déclencher le chargement des annonces
+    _loadUserIdAndFetchAnnouncements();
   }
 
   Future<void> _loadUserIdAndFetchAnnouncements() async {
     final prefs = await SharedPreferences.getInstance();
-    final userId = prefs.getString('userId'); // Récupérer le userId
+    final userId = prefs.getString('userId');
 
     if (userId != null) {
-      // Déclencher le chargement des annonces avec le userId
       context.read<CarAnnouncementBloc>().add(FetchVendorAnnouncement(int.parse(userId)));
     } else {
       print('Erreur : userId non trouvé dans SharedPreferences.');
@@ -48,7 +47,7 @@ class _MyPubsPageState extends State<MyPubsPage> {
           actions: [
             TextButton(
               onPressed: () {
-                Navigator.of(context).pop(); // Fermer le dialogue
+                Navigator.of(context).pop();
               },
               child: Text(
                 'Annuler',
@@ -58,7 +57,7 @@ class _MyPubsPageState extends State<MyPubsPage> {
             TextButton(
               onPressed: () {
                 context.read<CarAnnouncementBloc>().add(DeleteAnnouncement(id.toString(), userId));
-                Navigator.of(context).pop(); // Fermer le dialogue
+                Navigator.of(context).pop();
               },
               child: Text(
                 'Supprimer',
@@ -146,10 +145,21 @@ class _MyPubsPageState extends State<MyPubsPage> {
                                             top: Radius.circular(16),
                                           ),
                                           child: Image.network(
-                                            announcement.imageUrl,
+                                            'http://10.0.2.2:3000/fetchCarImages/${announcement.imageUrl}',
                                             height: 180,
                                             width: double.infinity,
                                             fit: BoxFit.cover,
+                                            errorBuilder: (context, error, stackTrace) => Container(
+                                              height: 180,
+                                              color: Colors.grey[300],
+                                              child: const Center(
+                                                child: Icon(
+                                                  Icons.broken_image,
+                                                  size: 50,
+                                                  color: Colors.grey,
+                                                ),
+                                              ),
+                                            ),
                                           ),
                                         ),
                                       Padding(
@@ -167,7 +177,7 @@ class _MyPubsPageState extends State<MyPubsPage> {
                                             ),
                                             const SizedBox(height: 8),
                                             Text(
-                                              'Prix : ${announcement.price} €',
+                                              'Prix : ${announcement.price} FCFA',
                                               style: GoogleFonts.poppins(
                                                 fontSize: 16,
                                                 fontWeight: FontWeight.w500,
@@ -199,7 +209,6 @@ class _MyPubsPageState extends State<MyPubsPage> {
                                                       ),
                                                     );
                                                     if (updatedData != null) {
-                                                      // Recharger les annonces après modification
                                                       _loadUserIdAndFetchAnnouncements();
                                                     }
                                                   },

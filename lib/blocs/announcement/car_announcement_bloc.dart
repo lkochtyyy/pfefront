@@ -14,7 +14,7 @@ class CarAnnouncementBloc extends Bloc<CarAnnouncementEvent, CarAnnouncementStat
     on<FetchAnnouncements>(_onFetch);
     on<CreateAnnouncement>(_onCreate);
     on<DeleteAnnouncement>(_onDelete);
-    on<FetchVendorAnnouncement>(_onFetchVendor); 
+    on<FetchVendorAnnouncement>(_onFetchVendor);
     on<UpdateAnnouncement>(_onUpdate);
   }
 
@@ -39,7 +39,7 @@ class CarAnnouncementBloc extends Bloc<CarAnnouncementEvent, CarAnnouncementStat
     try {
       await repository.createAnnouncement(event.announcement, event.imageFile);
       emit(AnnouncementCreated());
-      add(FetchAnnouncements()); // 🔄 Refresh après création
+      add(FetchAnnouncements());
     } catch (e) {
       emit(CarAnnouncementError('Failed to create announcement: ${e.toString()}'));
     }
@@ -60,28 +60,29 @@ class CarAnnouncementBloc extends Bloc<CarAnnouncementEvent, CarAnnouncementStat
   }
 
   Future<void> _onFetchVendor(
-  FetchVendorAnnouncement event,
-  Emitter<CarAnnouncementState> emit,
-) async {
-  emit(VendorAnnouncementsLoading());
-  try {
-    final annonces = await repository.fetchByVendor(event.vendorId);
-    emit(VendorAnnouncementsLoaded(annonces)); // Use the list directly
-  } catch (e) {
-    emit(VendorAnnouncementsError(e.toString()));
+    FetchVendorAnnouncement event,
+    Emitter<CarAnnouncementState> emit,
+  ) async {
+    emit(VendorAnnouncementsLoading());
+    try {
+      final annonces = await repository.fetchByVendor(event.vendorId);
+      emit(VendorAnnouncementsLoaded(annonces));
+    } catch (e) {
+      emit(VendorAnnouncementsError(e.toString()));
+    }
   }
-}
-Future<void> _onUpdate(
-  UpdateAnnouncement event,
-  Emitter<CarAnnouncementState> emit,
-) async {
-  emit(CarAnnouncementLoading());
-  try {
-    await repository.updateAnnouncement(event.updatedData);
-    emit(AnnouncementUpdated());
-    add(FetchVendorAnnouncement(event.updatedData['userId']));
-  } catch (e) {
-    emit(CarAnnouncementError('Erreur lors de la mise à jour : ${e.toString()}'));
+
+  Future<void> _onUpdate(
+    UpdateAnnouncement event,
+    Emitter<CarAnnouncementState> emit,
+  ) async {
+    emit(CarAnnouncementLoading());
+    try {
+      await repository.updateAnnouncement(event.updatedData, event.imageFile);
+      emit(AnnouncementUpdated());
+      add(FetchVendorAnnouncement(int.parse(event.updatedData['userId'])));
+    } catch (e) {
+      emit(CarAnnouncementError('Erreur lors de la mise à jour : ${e.toString()}'));
+    }
   }
-}
 }
