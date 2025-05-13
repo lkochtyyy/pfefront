@@ -3,21 +3,16 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:lottie/lottie.dart';
 import 'dart:math';
 
-
 import 'pagedacceuil.dart';
-
 
 class LoadingTransitionPage extends StatefulWidget {
   final int userId;
 
-
   const LoadingTransitionPage({super.key, required this.userId});
-
 
   @override
   State<LoadingTransitionPage> createState() => _LoadingTransitionPageState();
 }
-
 
 class _LoadingTransitionPageState extends State<LoadingTransitionPage>
     with TickerProviderStateMixin {
@@ -25,11 +20,9 @@ class _LoadingTransitionPageState extends State<LoadingTransitionPage>
   late AnimationController _bubbleController;
   late Animation<double> _scaleAnimation;
 
-
   @override
   void initState() {
     super.initState();
-
 
     _scaleController = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 1500));
@@ -37,21 +30,17 @@ class _LoadingTransitionPageState extends State<LoadingTransitionPage>
         CurvedAnimation(parent: _scaleController, curve: Curves.elasticOut);
     _scaleController.forward();
 
-
     _bubbleController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 8),
     )..repeat();
-
 
     Future.delayed(const Duration(seconds: 3), () {
       Navigator.pushReplacement(
         context,
         PageRouteBuilder(
           transitionDuration: const Duration(milliseconds: 800),
-          pageBuilder: (_, __, ___) => FeaturedCarsPage(
-        
-          ),
+          pageBuilder: (_, __, ___) => FeaturedCarsPage(),
           transitionsBuilder: (_, animation, __, child) {
             final curved =
                 CurvedAnimation(parent: animation, curve: Curves.easeInOut);
@@ -71,7 +60,6 @@ class _LoadingTransitionPageState extends State<LoadingTransitionPage>
     });
   }
 
-
   @override
   void dispose() {
     _scaleController.dispose();
@@ -79,11 +67,9 @@ class _LoadingTransitionPageState extends State<LoadingTransitionPage>
     super.dispose();
   }
 
-
   @override
   Widget build(BuildContext context) {
     final screen = MediaQuery.of(context).size;
-
 
     return Scaffold(
       body: Stack(
@@ -108,13 +94,11 @@ class _LoadingTransitionPageState extends State<LoadingTransitionPage>
             },
           ),
 
-
           // Bulles flottantes animées
           CustomPaint(
             size: screen,
             painter: _BubblePainter(_bubbleController),
           ),
-
 
           // Contenu principal centré
           Center(
@@ -162,20 +146,17 @@ class _LoadingTransitionPageState extends State<LoadingTransitionPage>
   }
 }
 
-
 // Peinture des bulles flottantes
 class _BubblePainter extends CustomPainter {
   final Animation<double> animation;
   final List<Offset> positions = List.generate(15, (_) => Offset.zero);
   final Random random = Random();
 
-
   _BubblePainter(this.animation) : super(repaint: animation) {
     for (int i = 0; i < positions.length; i++) {
       positions[i] = Offset(random.nextDouble(), random.nextDouble());
     }
   }
-
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -188,10 +169,6 @@ class _BubblePainter extends CustomPainter {
     }
   }
 
-
   @override
   bool shouldRepaint(covariant _BubblePainter oldDelegate) => true;
 }
-
-
-

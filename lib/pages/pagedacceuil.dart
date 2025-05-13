@@ -110,23 +110,55 @@ class _FeaturedCarsPageState extends State<FeaturedCarsPage> {
                         builder: (context, state) {
                           if (isFavorisLoading) {
                             return const Center(
-                                child: CircularProgressIndicator());
+                              child: CircularProgressIndicator(),
+                            );
                           }
 
                           if (state is CarAnnouncementLoading) {
                             return const Center(
-                                child: CircularProgressIndicator());
+                              child: CircularProgressIndicator(),
+                            );
                           } else if (state is CarAnnouncementLoaded) {
                             print("Search Text: $_searchText");
                             print(
                                 "Announcements: ${state.announcements.map((a) => a.title).toList()}");
-                            // Filter announcements by search text
+
+                            // Filtrer les annonces par texte de recherche
                             final List<CarAnnouncement> list = state
                                 .announcements
                                 .where((a) => a.title
                                     .toLowerCase()
                                     .contains(_searchText.toLowerCase()))
                                 .toList();
+
+                            // Vérifier si la liste est vide
+                            if (list.isEmpty) {
+                              return Center(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    SizedBox(
+                                      height: 200,
+                                      width: 200,
+                                      child: Lottie.asset(
+                                        'assets/json/nodata.json', // Animation Lottie pour état vide
+                                        fit: BoxFit.contain,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 16),
+                                    Text(
+                                      'Aucune publication trouvée',
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w500,
+                                        color: Colors.grey,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }
+
                             return GridView.builder(
                               padding: const EdgeInsets.only(bottom: 20),
                               gridDelegate:
@@ -167,9 +199,9 @@ class _FeaturedCarsPageState extends State<FeaturedCarsPage> {
                                       child: IconButton(
                                         icon: Icon(
                                           favorisIds.contains(car.id)
-                                              ? Icons.favorite // ❤️ filled
+                                              ? Icons.favorite // ❤️ rempli
                                               : Icons
-                                                  .favorite_border, // 🤍 empty
+                                                  .favorite_border, // 🤍 vide
                                           color: const Color.fromARGB(
                                               255, 250, 2, 2),
                                         ),
@@ -194,7 +226,7 @@ class _FeaturedCarsPageState extends State<FeaturedCarsPage> {
                                                   .showSnackBar(
                                                 const SnackBar(
                                                     content: Text(
-                                                        'Added to favorites')),
+                                                        'Ajouté aux favoris')),
                                               );
                                             } else {
                                               context.read<FavoriBloc>().add(
@@ -209,7 +241,7 @@ class _FeaturedCarsPageState extends State<FeaturedCarsPage> {
                                                   .showSnackBar(
                                                 const SnackBar(
                                                     content: Text(
-                                                        'Removed from favorites')),
+                                                        'Retiré des favoris')),
                                               );
                                             }
                                           } else {
@@ -217,7 +249,7 @@ class _FeaturedCarsPageState extends State<FeaturedCarsPage> {
                                                 .showSnackBar(
                                               const SnackBar(
                                                   content: Text(
-                                                      'User not identified')),
+                                                      'Utilisateur non identifié')),
                                             );
                                           }
                                         },
@@ -228,7 +260,9 @@ class _FeaturedCarsPageState extends State<FeaturedCarsPage> {
                               },
                             );
                           } else if (state is CarAnnouncementError) {
-                            return Center(child: Text('Error: ${state.error}'));
+                            return Center(
+                              child: Text('Erreur : ${state.error}'),
+                            );
                           }
                           return const SizedBox();
                         },
@@ -275,7 +309,7 @@ class _FeaturedCarsPageState extends State<FeaturedCarsPage> {
                         duration: const Duration(milliseconds: 300),
                         child: ClipOval(
                           child: SizedBox(
-                            height: 85,
+                            height: 75,
                             width: 85,
                             child: Lottie.asset(
                               'assets/json/chatbot.json',
@@ -328,9 +362,8 @@ class _FeaturedCarsPageState extends State<FeaturedCarsPage> {
       ),
       centerTitle: false,
       actions: [
-        IconButton(
-          icon: const Icon(Icons.notifications, color: Colors.black),
-          onPressed: () {
+        GestureDetector(
+          onTap: () {
             Navigator.push(
               context,
               MaterialPageRoute(
@@ -338,6 +371,15 @@ class _FeaturedCarsPageState extends State<FeaturedCarsPage> {
               ),
             );
           },
+          child: SizedBox(
+            height: 100,
+            width: 50,
+            child: Lottie.asset(
+              'assets/json/notification.json', // Chemin vers le fichier Lottie
+              fit: BoxFit.contain,
+              repeat: true, // Animation en boucle
+            ),
+          ),
         ),
         ValueListenableBuilder<String?>(
           valueListenable: UserAvatar.avatarPath,
@@ -456,7 +498,7 @@ class _FeaturedCarsPageState extends State<FeaturedCarsPage> {
   BottomNavigationBar _buildBottomNavigationBar(BuildContext context) {
     return BottomNavigationBar(
       backgroundColor: Colors.white,
-      selectedItemColor: const Color(0xFF50C2C9),
+      selectedItemColor: const Color.fromARGB(255, 11, 15, 15),
       unselectedItemColor: Colors.black.withOpacity(0.6),
       showUnselectedLabels: true,
       elevation: 12,
@@ -464,23 +506,51 @@ class _FeaturedCarsPageState extends State<FeaturedCarsPage> {
       selectedFontSize: 14,
       unselectedFontSize: 12,
       type: BottomNavigationBarType.fixed,
-      currentIndex: 1,
-      items: const [
+      currentIndex: 1, // Index de l'élément sélectionné
+      items: [
         BottomNavigationBarItem(
-          icon: Icon(Icons.directions_car),
-          label: 'Publish',
+          icon: SizedBox(
+            height: 40,
+            width: 40,
+            child: Lottie.asset(
+              'assets/json/publishing.json',
+              fit: BoxFit.contain,
+            ),
+          ),
+          label: 'Vendre',
         ),
         BottomNavigationBarItem(
-          icon: Icon(Icons.home),
+          icon: SizedBox(
+            height: 40,
+            width: 40,
+            child: Lottie.asset(
+              'assets/json/home.json',
+              fit: BoxFit.contain,
+            ),
+          ),
           label: 'Home',
         ),
         BottomNavigationBarItem(
-          icon: Icon(Icons.email_rounded),
+          icon: SizedBox(
+            height: 40,
+            width: 40,
+            child: Lottie.asset(
+              'assets/json/texting.json',
+              fit: BoxFit.contain,
+            ),
+          ),
           label: 'Messages',
         ),
         BottomNavigationBarItem(
-          icon: Icon(Icons.stars_rounded),
-          label: 'Favorites',
+          icon: SizedBox(
+            height: 40,
+            width: 40,
+            child: Lottie.asset(
+              'assets/json/parking.json',
+              fit: BoxFit.contain,
+            ),
+          ),
+          label: 'Favoris',
         ),
       ],
       onTap: (index) {
@@ -488,25 +558,30 @@ class _FeaturedCarsPageState extends State<FeaturedCarsPage> {
           case 0:
             Navigator.push(
               context,
-              MaterialPageRoute(
-                  builder: (context) => const PublierAnnoncePage()),
+              MaterialPageRoute(builder: (_) => const PublierAnnoncePage()),
             );
             break;
-
+          case 1:
+            // Rester sur la page actuelle
+            break;
           case 2:
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (context) => const ChatsPage()),
+              MaterialPageRoute(builder: (_) => const ChatsPage()),
             );
             break;
           case 3:
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (context) => FavorisPage()),
+              MaterialPageRoute(builder: (_) => FavorisPage()),
             );
             break;
         }
       },
+      selectedLabelStyle:
+          GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600),
+      unselectedLabelStyle:
+          GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w400),
     );
   }
 }
@@ -524,10 +599,10 @@ class CarCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final image = data['image'] as String;
-    final priceFormatted = "\$${data['price'].toString().replaceAllMapped(
+    final priceFormatted = "${data['price'].toString().replaceAllMapped(
           RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
           (m) => '${m[1]},',
-        )}";
+        )} DT";
 
     return GestureDetector(
       onTap: onTap,
@@ -561,33 +636,23 @@ class CarCard extends StatelessWidget {
                   children: [
                     ClipRRect(
                       borderRadius: BorderRadius.circular(15),
-                      child: image.startsWith('http')
-                          ? Image.network(
-                              image,
-                              width: double.infinity,
-                              height: double.infinity,
-                              fit: BoxFit.cover,
-                              loadingBuilder:
-                                  (context, child, loadingProgress) {
-                                if (loadingProgress == null) return child;
-                                return Center(
-                                  child: CircularProgressIndicator(
-                                    value: loadingProgress.expectedTotalBytes !=
-                                            null
-                                        ? loadingProgress
-                                                .cumulativeBytesLoaded /
-                                            loadingProgress.expectedTotalBytes!
-                                        : null,
-                                  ),
-                                );
-                              },
-                            )
-                          : Image.asset(
-                              image,
-                              width: double.infinity,
-                              height: double.infinity,
-                              fit: BoxFit.cover,
+                      child: Image.network(
+                        'http://192.168.0.8:3000/fetchCarImages/${data['image']}',
+                        width: double.infinity,
+                        height: double.infinity,
+                        fit: BoxFit.cover,
+                        loadingBuilder: (context, child, loadingProgress) {
+                          if (loadingProgress == null) return child;
+                          return Center(
+                            child: CircularProgressIndicator(
+                              value: loadingProgress.expectedTotalBytes != null
+                                  ? loadingProgress.cumulativeBytesLoaded /
+                                      loadingProgress.expectedTotalBytes!
+                                  : null,
                             ),
+                          );
+                        },
+                      ),
                     ),
                     Positioned(
                       top: 8,

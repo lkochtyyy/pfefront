@@ -26,6 +26,7 @@ class _CarDetailPageState extends State<CarDetailPage> {
   int _currentImageIndex = 0;
   double _currentRating = 4.5;
   double _userRating = 0;
+  bool _isPressed = false;
 
   @override
   void initState() {
@@ -196,14 +197,16 @@ class _CarDetailPageState extends State<CarDetailPage> {
                             ),
                           ),
                           const Spacer(),
-                          const Icon(Icons.star, color: Colors.amber),
+                          const Icon(Icons.favorite_border,
+                              color: Colors.red), // Icone de favoris
                         ],
                       ),
                       const SizedBox(height: 20),
 
                       // Image
                       Hero(
-                        tag: 'car-image-${car.id}',
+                        tag:
+                            'http://192.168.0.8:3000/fetchCarImages/${car.imageUrl}',
                         child: Container(
                           height: 220,
                           decoration: BoxDecoration(
@@ -476,24 +479,50 @@ class _CarDetailPageState extends State<CarDetailPage> {
                       const SizedBox(height: 30),
                       // Contact button
                       Center(
-                        child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.teal,
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 40, vertical: 16),
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12)),
-                          ),
-                          onPressed: _showConfirmationDialog,
-                          child: Text(
-                            "Contacter le vendeur",
-                            style: GoogleFonts.poppins(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w600,
+                        child: GestureDetector(
+                          onTapDown: (_) => setState(() => _isPressed = true),
+                          onTapUp: (_) => setState(() => _isPressed = false),
+                          onTapCancel: () => setState(() => _isPressed = false),
+                          onTap: _showConfirmationDialog,
+                          child: AnimatedScale(
+                            scale: _isPressed ? 0.95 : 1.0,
+                            duration: const Duration(milliseconds: 150),
+                            curve: Curves.easeInOut,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 40, vertical: 16),
+                              decoration: BoxDecoration(
+                                gradient: const LinearGradient(
+                                  colors: [
+                                    Color.fromARGB(255, 175, 39, 15),
+                                    Color.fromARGB(255, 175, 39, 15)
+                                  ],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                                borderRadius: BorderRadius.circular(14),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.teal.withOpacity(0.3),
+                                    blurRadius: 12,
+                                    offset: const Offset(0, 6),
+                                  ),
+                                ],
+                              ),
+                              child: Text(
+                                "Contacter le vendeur",
+                                style: GoogleFonts.poppins(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 16,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
                             ),
                           ),
                         ),
                       ),
+
                       const SizedBox(height: 20),
                     ],
                   ),

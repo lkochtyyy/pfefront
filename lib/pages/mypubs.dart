@@ -3,7 +3,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lottie/lottie.dart';
 import 'package:pfefront/blocs/announcement/car_announcement_bloc.dart';
-import 'package:pfefront/data/models/announcement_model.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'publier.dart';
 
@@ -18,16 +17,17 @@ class _MyPubsPageState extends State<MyPubsPage> {
   @override
   void initState() {
     super.initState();
-    _loadUserIdAndFetchAnnouncements(); // Charger le userId et déclencher le chargement des annonces
+    _loadUserIdAndFetchAnnouncements();
   }
 
   Future<void> _loadUserIdAndFetchAnnouncements() async {
     final prefs = await SharedPreferences.getInstance();
-    final userId = prefs.getString('userId'); // Récupérer le userId
+    final userId = prefs.getString('userId');
 
     if (userId != null) {
-      // Déclencher le chargement des annonces avec le userId
-      context.read<CarAnnouncementBloc>().add(FetchVendorAnnouncement(int.parse(userId)));
+      context
+          .read<CarAnnouncementBloc>()
+          .add(FetchVendorAnnouncement(int.parse(userId)));
     } else {
       print('Erreur : userId non trouvé dans SharedPreferences.');
     }
@@ -49,7 +49,7 @@ class _MyPubsPageState extends State<MyPubsPage> {
           actions: [
             TextButton(
               onPressed: () {
-                Navigator.of(context).pop(); // Fermer le dialogue
+                Navigator.of(context).pop();
               },
               child: Text(
                 'Annuler',
@@ -58,8 +58,10 @@ class _MyPubsPageState extends State<MyPubsPage> {
             ),
             TextButton(
               onPressed: () {
-                context.read<CarAnnouncementBloc>().add(DeleteAnnouncement(id.toString(), userId));
-                Navigator.of(context).pop(); // Fermer le dialogue
+                context
+                    .read<CarAnnouncementBloc>()
+                    .add(DeleteAnnouncement(id.toString(), userId));
+                Navigator.of(context).pop();
               },
               child: Text(
                 'Supprimer',
@@ -104,7 +106,8 @@ class _MyPubsPageState extends State<MyPubsPage> {
                     elevation: 0,
                   ),
                   Expanded(
-                    child: BlocBuilder<CarAnnouncementBloc, CarAnnouncementState>(
+                    child:
+                        BlocBuilder<CarAnnouncementBloc, CarAnnouncementState>(
                       builder: (context, state) {
                         if (state is VendorAnnouncementsLoading) {
                           return const Center(
@@ -139,24 +142,40 @@ class _MyPubsPageState extends State<MyPubsPage> {
                                   elevation: 6,
                                   shadowColor: Colors.black.withOpacity(0.1),
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       if (announcement.imageUrl.isNotEmpty)
                                         ClipRRect(
-                                          borderRadius: const BorderRadius.vertical(
+                                          borderRadius:
+                                              const BorderRadius.vertical(
                                             top: Radius.circular(16),
                                           ),
                                           child: Image.network(
-                                            announcement.imageUrl,
+                                            'http://192.168.0.8:3000/fetchCarImages/${announcement.imageUrl}',
                                             height: 180,
                                             width: double.infinity,
                                             fit: BoxFit.cover,
+                                            errorBuilder:
+                                                (context, error, stackTrace) =>
+                                                    Container(
+                                              height: 180,
+                                              color: Colors.grey[300],
+                                              child: const Center(
+                                                child: Icon(
+                                                  Icons.broken_image,
+                                                  size: 50,
+                                                  color: Colors.grey,
+                                                ),
+                                              ),
+                                            ),
                                           ),
                                         ),
                                       Padding(
                                         padding: const EdgeInsets.all(16),
                                         child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
                                           children: [
                                             Text(
                                               announcement.title,
@@ -168,7 +187,7 @@ class _MyPubsPageState extends State<MyPubsPage> {
                                             ),
                                             const SizedBox(height: 8),
                                             Text(
-                                              'Prix : ${announcement.price} €',
+                                              'Prix : ${announcement.price} FCFA',
                                               style: GoogleFonts.poppins(
                                                 fontSize: 16,
                                                 fontWeight: FontWeight.w500,
@@ -187,20 +206,24 @@ class _MyPubsPageState extends State<MyPubsPage> {
                                             ),
                                             const SizedBox(height: 16),
                                             Row(
-                                              mainAxisAlignment: MainAxisAlignment.end,
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.end,
                                               children: [
                                                 TextButton.icon(
                                                   onPressed: () async {
-                                                    final updatedData = await Navigator.push(
+                                                    final updatedData =
+                                                        await Navigator.push(
                                                       context,
                                                       MaterialPageRoute(
-                                                        builder: (context) => PublierAnnoncePage(
-                                                          publicationData: announcement.toJson(),
+                                                        builder: (context) =>
+                                                            PublierAnnoncePage(
+                                                          publicationData:
+                                                              announcement
+                                                                  .toJson(),
                                                         ),
                                                       ),
                                                     );
                                                     if (updatedData != null) {
-                                                      // Recharger les annonces après modification
                                                       _loadUserIdAndFetchAnnouncements();
                                                     }
                                                   },
@@ -218,16 +241,24 @@ class _MyPubsPageState extends State<MyPubsPage> {
                                                 const SizedBox(width: 8),
                                                 TextButton.icon(
                                                   onPressed: () async {
-                                                    if (announcement.id != null) {
-                                                      final prefs = await SharedPreferences.getInstance();
-                                                      final userId = prefs.getString('userId');
+                                                    if (announcement.id !=
+                                                        null) {
+                                                      final prefs =
+                                                          await SharedPreferences
+                                                              .getInstance();
+                                                      final userId = prefs
+                                                          .getString('userId');
                                                       if (userId != null) {
-                                                        _showDeleteDialog(announcement.id!, userId);
+                                                        _showDeleteDialog(
+                                                            announcement.id!,
+                                                            userId);
                                                       } else {
-                                                        print('Erreur : userId non trouvé dans SharedPreferences.');
+                                                        print(
+                                                            'Erreur : userId non trouvé dans SharedPreferences.');
                                                       }
                                                     } else {
-                                                      print('Erreur : ID de l\'annonce est null.');
+                                                      print(
+                                                          'Erreur : ID de l\'annonce est null.');
                                                     }
                                                   },
                                                   icon: const Icon(

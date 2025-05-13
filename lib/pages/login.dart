@@ -60,10 +60,10 @@ class _LoginPageState extends State<LoginPage> {
                         setState(() => _isLoading = true);
                       } else if (state is LoginSuccess) {
                         setState(() => _isLoading = false);
-                        
+
                         // Stocker l'ID et le token dans SharedPreferences
                         _storeLoginData(state.userId, state.token);
-                        
+
                         // Vérifier si les données sont bien stockées
                         _checkStoredData();
 
@@ -84,7 +84,7 @@ class _LoginPageState extends State<LoginPage> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                         const SizedBox(height: 180),
+                        const SizedBox(height: 180),
                         // Logo animé
                         Image.asset('assets/beepbeep.png', width: 320)
                             .animate()
@@ -109,7 +109,6 @@ class _LoginPageState extends State<LoginPage> {
                           obscureText: _obscureText,
                           toggleVisibility: _toggleVisibility,
                         ).animate().fade(duration: 500.ms).slideX(begin: 0.1),
-                        
 
                         // Lien "Forgot Password"
                         Align(

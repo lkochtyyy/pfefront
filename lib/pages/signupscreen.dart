@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lottie/lottie.dart';
+import 'package:pfefront/pages/quizz.dart';
 import '../blocs/auth/auth_bloc.dart';
 import '../blocs/auth/auth_event.dart';
 import '../blocs/auth/auth_state.dart';
@@ -84,6 +85,14 @@ class _RegisterPageState extends State<RegisterPage> {
   bool _isPasswordMatch = true;
   bool _acceptTerms = false;
   bool _showTermsError = false;
+  bool _areFieldsFilled() {
+    return _nomController.text.isNotEmpty &&
+        _prenomController.text.isNotEmpty &&
+        _emailController.text.isNotEmpty &&
+        _telController.text.isNotEmpty &&
+        _passwordController.text.isNotEmpty &&
+        _confirmPasswordController.text.isNotEmpty;
+  }
 
   void _validatePasswords() {
     setState(() {
@@ -99,8 +108,48 @@ class _RegisterPageState extends State<RegisterPage> {
 
   void _registerUser(BuildContext context) {
     setState(() {
-      _showTermsError = !_acceptTerms;
+      _showTermsError =
+          !_acceptTerms; // Afficher une erreur si la case n'est pas cochée
     });
+
+    if (!_areFieldsFilled()) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Veuillez remplir tous les champs.',
+            style: GoogleFonts.poppins(color: Colors.white),
+          ),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    if (!_isPasswordMatch) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Les mots de passe ne correspondent pas.',
+            style: GoogleFonts.poppins(color: Colors.white),
+          ),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    if (!_acceptTerms) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Vous devez accepter les conditions.',
+            style: GoogleFonts.poppins(color: Colors.white),
+          ),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
 
     if (_formKey.currentState!.validate() && _isPasswordMatch && _acceptTerms) {
       final user = UserModel(
@@ -169,19 +218,22 @@ class _RegisterPageState extends State<RegisterPage> {
                               Text(
                                 'Inscription terminée avec succès!',
                                 style: GoogleFonts.poppins(
-                                    fontSize: 18, fontWeight: FontWeight.w600),
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
                             ],
                           ),
                         ),
                       );
 
-                      // Rediriger vers la page d'accueil après un délai
+                      // Rediriger vers la page de quiz après un délai
                       Future.delayed(const Duration(seconds: 4), () {
                         Navigator.pushReplacement(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => const FeaturedCarsPage(),
+                            builder: (context) =>
+                                CarBrandSelectionPage(), // Page quizz.dart
                           ),
                         );
                       });

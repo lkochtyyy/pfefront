@@ -1,12 +1,12 @@
 import 'dart:convert';
-
+import 'dart:io';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lottie/lottie.dart';
 import 'package:animate_do/animate_do.dart';
-import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import 'package:pfefront/blocs/announcement/car_announcement_bloc.dart';
 import 'package:pfefront/data/models/announcement_model.dart';
@@ -25,6 +25,7 @@ class PublierAnnoncePage extends StatefulWidget {
 class _PublierAnnoncePageState extends State<PublierAnnoncePage>
     with SingleTickerProviderStateMixin {
   // Contrôleurs
+
   final _formKey = GlobalKey<FormState>();
   final _pageController = PageController();
   final _titreController = TextEditingController();
@@ -36,7 +37,7 @@ class _PublierAnnoncePageState extends State<PublierAnnoncePage>
   final _prixController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _phoneController = TextEditingController();
-
+  final FocusNode _priceFocusNode = FocusNode();
   // États
   int _currentPage = 0;
   bool _isLoading = false;
@@ -46,6 +47,8 @@ class _PublierAnnoncePageState extends State<PublierAnnoncePage>
   bool _bluetooth = false, _alarm = false, _cruise = false, _parking = false;
   List<bool> _completedSections = [false, false, false];
   bool _isDescriptionFocused = false;
+  String? _existingImageUrl;
+  bool _isPriceFieldEnabled = false; // Par défaut, le champ est désactivé
 
   // Animations
   late AnimationController _bgController;
@@ -67,6 +70,20 @@ class _PublierAnnoncePageState extends State<PublierAnnoncePage>
     super.initState();
     _initAnimations();
     _prefillDataIfEditing();
+    @override
+    void initState() {
+      super.initState();
+      _initAnimations();
+      _prefillDataIfEditing();
+
+      // Ajouter un listener au FocusNode du champ de prix
+      _priceFocusNode.addListener(() {
+        if (_priceFocusNode.hasFocus && !_isPriceFieldEnabled) {
+          _priceFocusNode.unfocus(); // Retirer le focus temporairement
+          _showPriceDialog(); // Afficher le dialog
+        }
+      });
+    }
   }
 
   void _initAnimations() {
@@ -88,27 +105,29 @@ class _PublierAnnoncePageState extends State<PublierAnnoncePage>
 
   void _prefillDataIfEditing() {
     if (widget.publicationData != null) {
-      _titreController.text = widget.publicationData!['titre'] ?? '';
-      _anneeController.text = widget.publicationData!['annee'] ?? '';
-      _marqueController.text = widget.publicationData!['marque'] ?? '';
-      _modeleController.text = widget.publicationData!['modele'] ?? '';
+      _titreController.text = widget.publicationData!['title'] ?? '';
+      _anneeController.text = widget.publicationData!['year']?.toString() ?? '';
+      _marqueController.text = widget.publicationData!['brand'] ?? '';
+      _modeleController.text = widget.publicationData!['model'] ?? '';
       _kilometrageController.text =
-          widget.publicationData!['kilometrage'] ?? '';
-      _lieuController.text = widget.publicationData!['lieu'] ?? '';
-      _prixController.text = widget.publicationData!['prix'] ?? '';
+          widget.publicationData!['mileage']?.toString() ?? '';
+      _lieuController.text = widget.publicationData!['location'] ?? '';
+      _prixController.text = widget.publicationData!['price']?.toString() ?? '';
       _descriptionController.text =
           widget.publicationData!['description'] ?? '';
-      _condition = widget.publicationData!['condition'] ?? 'Nouveau';
-      _carburant = widget.publicationData!['carburant'] ?? 'Essence';
+      _condition = widget.publicationData!['car_condition'] ?? 'Nouveau';
+      _carburant = widget.publicationData!['fuel_type'] ?? 'Essence';
       _boite = widget.publicationData!['boite'] ?? 'Automatique';
+      _existingImageUrl = widget.publicationData!['image_url'];
 
       // Pré-remplir les options si elles existent
       if (widget.publicationData!.containsKey('options')) {
-        final options = widget.publicationData!['options'] as Map<String, bool>;
-        _bluetooth = options['bluetooth'] ?? false;
-        _alarm = options['alarm'] ?? false;
-        _cruise = options['cruise'] ?? false;
-        _parking = options['parking'] ?? false;
+        final options =
+            widget.publicationData!['options'].toString().split(',');
+        _bluetooth = options.contains('bluetooth');
+        _alarm = options.contains('alarm');
+        _cruise = options.contains('cruise');
+        _parking = options.contains('parking');
       }
 
       // Marquer toutes les sections comme complétées si on est en mode édition
@@ -129,6 +148,7 @@ class _PublierAnnoncePageState extends State<PublierAnnoncePage>
     _prixController.dispose();
     _descriptionController.dispose();
     _phoneController.dispose();
+
     super.dispose();
   }
 
@@ -137,8 +157,8 @@ class _PublierAnnoncePageState extends State<PublierAnnoncePage>
       final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
       if (image != null) {
         setState(() {
-          _selectedImages.clear(); // Supprime les images précédentes
-          _selectedImages.add(File(image.path)); // Ajoute la nouvelle image
+          _selectedImages.clear();
+          _selectedImages.add(File(image.path));
         });
       }
     } on PlatformException catch (e) {
@@ -154,10 +174,10 @@ class _PublierAnnoncePageState extends State<PublierAnnoncePage>
   }
 
   Future<void> _showPhoneNumberDialog() async {
-    bool isSuccess = false; // État pour afficher le message de succès
-    bool isLoading = false; // État pour afficher le CircularProgressIndicator
-    bool showLottie = false; // État pour afficher l'animation Lottie
-    String phoneError = ""; // Message d'erreur pour le champ de téléphone
+    bool isSuccess = false;
+    bool isLoading = false;
+    bool showLottie = false;
+    String phoneError = "";
 
     return showModalBottomSheet(
       context: context,
@@ -173,15 +193,14 @@ class _PublierAnnoncePageState extends State<PublierAnnoncePage>
                 bottom: MediaQuery.of(context).viewInsets.bottom,
               ),
               child: Container(
-                decoration: BoxDecoration(
+                decoration: const BoxDecoration(
                   color: Colors.white,
-                  borderRadius:
-                      const BorderRadius.vertical(top: Radius.circular(24)),
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black12,
                       blurRadius: 15,
-                      offset: const Offset(0, -3),
+                      offset: Offset(0, -3),
                     ),
                   ],
                 ),
@@ -201,10 +220,8 @@ class _PublierAnnoncePageState extends State<PublierAnnoncePage>
                               onLoaded: (composition) {
                                 Future.delayed(const Duration(seconds: 5), () {
                                   setState(() {
-                                    isSuccess =
-                                        true; // Passer à l'état de succès
-                                    showLottie =
-                                        false; // Masquer l'animation Lottie
+                                    isSuccess = true;
+                                    showLottie = false;
                                   });
                                 });
                               },
@@ -230,11 +247,9 @@ class _PublierAnnoncePageState extends State<PublierAnnoncePage>
                                   mainAxisAlignment:
                                       MainAxisAlignment.spaceBetween,
                                   children: [
-                                    // Bouton "Créer une autre annonce"
                                     Expanded(
                                       child: ElevatedButton.icon(
                                         onPressed: () {
-                                          // Réinitialiser le formulaire
                                           setState(() {
                                             _titreController.clear();
                                             _anneeController.clear();
@@ -258,15 +273,11 @@ class _PublierAnnoncePageState extends State<PublierAnnoncePage>
                                               false
                                             ];
                                           });
-
-                                          // Revenir au premier bloc
                                           _pageController.animateToPage(
                                             0,
                                             duration: _animationDuration,
                                             curve: Curves.easeInOut,
                                           );
-
-                                          // Fermer la modal
                                           Navigator.pop(context);
                                         },
                                         icon: const Icon(Icons.add,
@@ -280,8 +291,7 @@ class _PublierAnnoncePageState extends State<PublierAnnoncePage>
                                           ),
                                         ),
                                         style: ElevatedButton.styleFrom(
-                                          backgroundColor:
-                                              Colors.grey[600], // Couleur grise
+                                          backgroundColor: Colors.grey[600],
                                           shape: RoundedRectangleBorder(
                                             borderRadius:
                                                 BorderRadius.circular(12),
@@ -292,7 +302,6 @@ class _PublierAnnoncePageState extends State<PublierAnnoncePage>
                                       ),
                                     ),
                                     const SizedBox(width: 16),
-                                    // Bouton "Voir mon annonce"
                                     Expanded(
                                       child: ElevatedButton.icon(
                                         onPressed: () {
@@ -433,23 +442,17 @@ class _PublierAnnoncePageState extends State<PublierAnnoncePage>
                                                   });
                                                   return;
                                                 }
-
                                                 setState(
                                                     () => isLoading = true);
-
-                                                // Simuler un délai pour la validation
                                                 await Future.delayed(
                                                     const Duration(seconds: 2));
-
                                                 setState(() {
                                                   isLoading = false;
-                                                  showLottie =
-                                                      true; // Afficher l'animation Lottie
+                                                  showLottie = true;
                                                 });
                                               },
                                         style: ElevatedButton.styleFrom(
-                                          backgroundColor:
-                                              _secondaryColor, // Couleur mauve
+                                          backgroundColor: _secondaryColor,
                                           padding: const EdgeInsets.symmetric(
                                               vertical: 16),
                                           shape: RoundedRectangleBorder(
@@ -508,7 +511,6 @@ class _PublierAnnoncePageState extends State<PublierAnnoncePage>
         ),
       ),
     );
-
     await Future.delayed(const Duration(seconds: 2));
     if (mounted) Navigator.pop(context);
   }
@@ -518,12 +520,6 @@ class _PublierAnnoncePageState extends State<PublierAnnoncePage>
 
     if (!_validateCurrentPage()) return;
 
-    if (_selectedImages.isEmpty) {
-      print("Erreur : aucune image sélectionnée");
-      _showErrorSnackbar('Veuillez ajouter au moins une image');
-      return;
-    }
-
     final prefs = await SharedPreferences.getInstance();
     final userId = prefs.getString('userId');
     if (userId == null) {
@@ -531,7 +527,6 @@ class _PublierAnnoncePageState extends State<PublierAnnoncePage>
       _showErrorSnackbar('Erreur : utilisateur non connecté');
       return;
     }
-    print("userId: $userId");
 
     // Convertir les options en chaîne de caractères
     final optionsString = [
@@ -547,35 +542,71 @@ class _PublierAnnoncePageState extends State<PublierAnnoncePage>
       final kilometrage = int.tryParse(_kilometrageController.text.trim()) ?? 0;
       final prix = double.tryParse(_prixController.text.trim()) ?? 0.0;
 
-      // Préparer les données de l'annonce
-      final announcement = CarAnnouncement(
-        title: _titreController.text,
-        carCondition: _condition,
-        year: annee,
-        brand: _marqueController.text,
-        model: _modeleController.text,
-        fuelType: _carburant,
-        mileage: kilometrage,
-        options: optionsString,
-        location: _lieuController.text,
-        price: prix,
-        description: _descriptionController.text,
-        imageFile: _selectedImages.first,
-        imageUrl: '',
-        vendorId: int.parse(userId),
-      );
+      if (widget.publicationData != null) {
+        // Mode édition - Mise à jour
+        final updatedData = {
+          'id': widget.publicationData!['id'],
+          'title': _titreController.text,
+          'car_condition': _condition,
+          'year': annee,
+          'brand': _marqueController.text,
+          'model': _modeleController.text,
+          'fuel_type': _carburant,
+          'mileage': kilometrage,
+          'options': optionsString,
+          'location': _lieuController.text,
+          'price': prix,
+          'description': _descriptionController.text,
+          'userId': userId,
+          'image_url': _existingImageUrl,
+        };
 
-      print("Données de l'annonce : $announcement");
+        print("Données mises à jour : $updatedData");
 
-      // Ajouter l'événement au BLoC
-      print("Ajout de l'événement CreateAnnouncement au BLoC");
-      context.read<CarAnnouncementBloc>().add(
-            CreateAnnouncement(
-              userId: userId,
-              announcement: announcement,
-              imageFile: _selectedImages.first,
-            ),
-          );
+        // Ajouter l'événement de mise à jour au BLoC avec l'image si modifiée
+        context.read<CarAnnouncementBloc>().add(
+              UpdateAnnouncement(
+                updatedData: updatedData,
+                imageFile:
+                    _selectedImages.isNotEmpty ? _selectedImages.first : null,
+              ),
+            );
+      } else {
+        // Mode création - Nouvelle annonce
+        if (_selectedImages.isEmpty) {
+          print("Erreur : aucune image sélectionnée");
+          _showErrorSnackbar('Veuillez ajouter au moins une image');
+          return;
+        }
+
+        final announcement = CarAnnouncement(
+          title: _titreController.text,
+          carCondition: _condition,
+          year: annee,
+          brand: _marqueController.text,
+          model: _modeleController.text,
+          fuelType: _carburant,
+          mileage: kilometrage,
+          options: optionsString,
+          location: _lieuController.text,
+          price: prix,
+          description: _descriptionController.text,
+          imageFile: _selectedImages.first,
+          imageUrl: '',
+          vendorId: int.parse(userId),
+        );
+
+        print("Données de l'annonce : $announcement");
+
+        // Ajouter l'événement de création au BLoC
+        context.read<CarAnnouncementBloc>().add(
+              CreateAnnouncement(
+                userId: userId,
+                announcement: announcement,
+                imageFile: _selectedImages.first,
+              ),
+            );
+      }
     } catch (e) {
       print("Erreur lors de l'ajout de l'événement au BLoC : $e");
       _showErrorSnackbar('Une erreur est survenue lors de la publication.');
@@ -640,18 +671,131 @@ class _PublierAnnoncePageState extends State<PublierAnnoncePage>
     );
   }
 
+  void _showPriceDialog() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: Text(
+            "Choisissez une option",
+            style: GoogleFonts.poppins(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              GestureDetector(
+                onTap: () {
+                  Navigator.pop(context);
+                  print("Prédiction de prix déclenchée !");
+                  // TODO : logique de prédiction ici
+                },
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Color(0xFF6A5AE0), Color(0xFF8E44AD)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.purple.withOpacity(0.3),
+                        blurRadius: 12,
+                        offset: Offset(0, 6),
+                      ),
+                    ],
+                  ),
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SizedBox(
+                        height: 32,
+                        width: 32,
+                        child: Lottie.asset(
+                          'assets/json/shine.json',
+                          fit: BoxFit.cover,
+                          repeat: true,
+                        ),
+                      ),
+                      const SizedBox(width: 15),
+                      Text(
+                        "Predict",
+                        style: GoogleFonts.poppins(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(context); // Fermer le dialog
+                  setState(() {
+                    _isPriceFieldEnabled = true; // Activer le champ de prix
+                  });
+                  print("Saisie manuelle activée !");
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.grey[600],
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.edit, color: Colors.white),
+                    const SizedBox(width: 8),
+                    Text(
+                      "Saisir manuellement",
+                      style: GoogleFonts.poppins(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return BlocListener<CarAnnouncementBloc, CarAnnouncementState>(
       listener: (context, state) {
         if (state is CarAnnouncementLoading) {
           setState(() => _isLoading = true);
-        } else if (state is AnnouncementCreated) {
+        } else if (state is AnnouncementCreated ||
+            state is AnnouncementUpdated) {
           setState(() => _isLoading = false);
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Annonce publiée avec succès !')),
+            SnackBar(
+              content: Text(state is AnnouncementCreated
+                  ? 'Annonce publiée avec succès !'
+                  : 'Annonce mise à jour avec succès !'),
+            ),
           );
-          Navigator.pop(context); // Retour à la page précédente
+          Navigator.pop(context);
         } else if (state is CarAnnouncementError) {
           setState(() => _isLoading = false);
           _showErrorSnackbar(state.error);
@@ -697,7 +841,6 @@ class _PublierAnnoncePageState extends State<PublierAnnoncePage>
                   key: _formKey,
                   child: Column(
                     children: [
-                      _buildPageIndicator(),
                       Expanded(
                         child: PageView(
                           controller: _pageController,
@@ -715,6 +858,7 @@ class _PublierAnnoncePageState extends State<PublierAnnoncePage>
                           ],
                         ),
                       ),
+                      _buildPageIndicator(), // Déplacer les 3 points ici
                       if (_currentPage == 2) _buildSubmitButton(),
                     ],
                   ),
@@ -751,13 +895,19 @@ class _PublierAnnoncePageState extends State<PublierAnnoncePage>
             ),
           ),
           ElevatedButton(
-            onPressed: () {
-              // TODO: Implémenter la suppression
-              Navigator.pop(context);
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Annonce supprimée avec succès')),
-              );
+            onPressed: () async {
+              final prefs = await SharedPreferences.getInstance();
+              final userId = prefs.getString('userId');
+              if (userId != null && widget.publicationData!['id'] != null) {
+                context.read<CarAnnouncementBloc>().add(
+                      DeleteAnnouncement(
+                        widget.publicationData!['id'].toString(),
+                        userId,
+                      ),
+                    );
+                Navigator.pop(context);
+                Navigator.pop(context);
+              }
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red,
@@ -833,16 +983,16 @@ class _PublierAnnoncePageState extends State<PublierAnnoncePage>
                     gradient: LinearGradient(
                       colors: _isLoading
                           ? [
-                              _secondaryColor.withOpacity(0.6),
-                              _primaryColor.withOpacity(0.6)
+                              Colors.orange.withOpacity(0.6),
+                              Colors.red.withOpacity(0.6),
                             ]
-                          : [_secondaryColor, _primaryColor],
+                          : [Colors.orange, Colors.red],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: _primaryColor.withOpacity(0.3),
+                        color: Colors.orange.withOpacity(0.3),
                         blurRadius: 12,
                         offset: const Offset(0, 6),
                       ),
@@ -860,7 +1010,12 @@ class _PublierAnnoncePageState extends State<PublierAnnoncePage>
                           : Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                const Icon(Icons.publish, color: Colors.white),
+                                Lottie.asset(
+                                  'assets/json/send.json', // Chemin vers l'animation Lottie
+                                  height: 40,
+                                  width: 40,
+                                  fit: BoxFit.cover,
+                                ),
                                 const SizedBox(width: 12),
                                 Text(
                                   widget.publicationData != null
@@ -898,72 +1053,74 @@ class _PublierAnnoncePageState extends State<PublierAnnoncePage>
                 ),
               ),
             ),
-            Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                ConstrainedBox(
-                  constraints: const BoxConstraints(minHeight: 400),
-                  child: _buildCard(
-                    title: "Titre de l'annonce",
-                    children: [
-                      const SizedBox(height: 20),
-                      _buildStyledTextField(
-                        "Titre de l'annonce*",
-                        _titreController,
-                        validator: (value) => value?.isEmpty ?? true
-                            ? 'Ce champ est obligatoire'
-                            : null,
-                      ),
-                      const SizedBox(height: 30),
-                      Text(
-                        "Commencez par indiquer un titre clair et descriptif qui attirera l'attention des acheteurs.",
-                        style: GoogleFonts.poppins(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w400,
-                          color: Colors.grey[700],
+            Transform.translate(
+              offset: const Offset(0, -30), // Décalage vers le haut
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(minHeight: 400),
+                    child: _buildCard(
+                      title: "Titre de l'annonce",
+                      children: [
+                        const SizedBox(height: 20),
+                        _buildStyledTextField(
+                          "Titre de l'annonce*",
+                          _titreController,
+                          validator: (value) => value?.isEmpty ?? true
+                              ? 'Ce champ est obligatoire'
+                              : null,
                         ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 40),
-                      Row(
-                        mainAxisAlignment:
-                            MainAxisAlignment.end, // Aligner à droite
-                        children: [
-                          FadeInUp(
-                            delay: const Duration(milliseconds: 300),
-                            child: ElevatedButton(
-                              onPressed: () {
-                                if (_titreController.text.trim().isEmpty) {
-                                  _showErrorSnackbar(
-                                      'Veuillez remplir le titre de l\'annonce');
-                                } else {
-                                  _pageController.animateToPage(
-                                    1,
-                                    duration: _animationDuration,
-                                    curve: Curves.easeInOut,
-                                  );
-                                }
-                              },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: _secondaryColor,
-                                padding: const EdgeInsets.all(16),
-                                shape: const CircleBorder(),
-                                shadowColor: _secondaryColor.withOpacity(0.5),
-                                elevation: 8,
-                              ),
-                              child: const Icon(
-                                Icons.arrow_forward,
-                                color: Colors.white,
-                                size: 24,
+                        const SizedBox(height: 30),
+                        Text(
+                          "Commencez par indiquer un titre clair et descriptif qui attirera l'attention des acheteurs.",
+                          style: GoogleFonts.poppins(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w400,
+                            color: Colors.grey[700],
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 40),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            FadeInUp(
+                              delay: const Duration(milliseconds: 300),
+                              child: ElevatedButton(
+                                onPressed: () {
+                                  if (_titreController.text.trim().isEmpty) {
+                                    _showErrorSnackbar(
+                                        'Veuillez remplir le titre de l\'annonce');
+                                  } else {
+                                    _pageController.animateToPage(
+                                      1,
+                                      duration: _animationDuration,
+                                      curve: Curves.easeInOut,
+                                    );
+                                  }
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: _secondaryColor,
+                                  padding: const EdgeInsets.all(16),
+                                  shape: const CircleBorder(),
+                                  shadowColor: _secondaryColor.withOpacity(0.5),
+                                  elevation: 8,
+                                ),
+                                child: const Icon(
+                                  Icons.arrow_forward,
+                                  color: Colors.white,
+                                  size: 24,
+                                ),
                               ),
                             ),
-                          ),
-                        ],
-                      ),
-                    ],
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ],
         ),
@@ -987,8 +1144,9 @@ class _PublierAnnoncePageState extends State<PublierAnnoncePage>
                   controller: _anneeController,
                   keyboardType: TextInputType.number,
                   validator: (value) {
-                    if (value?.isEmpty ?? true)
+                    if (value?.isEmpty ?? true) {
                       return 'Ce champ est obligatoire';
+                    }
                     final year = int.tryParse(value!);
                     if (year == null ||
                         year < 1900 ||
@@ -1004,8 +1162,9 @@ class _PublierAnnoncePageState extends State<PublierAnnoncePage>
                   controller: _kilometrageController,
                   keyboardType: TextInputType.number,
                   validator: (value) {
-                    if (value?.isEmpty ?? true)
+                    if (value?.isEmpty ?? true) {
                       return 'Ce champ est obligatoire';
+                    }
                     final km = int.tryParse(value!);
                     if (km == null || km < 0) return 'Valeur invalide';
                     return null;
@@ -1033,7 +1192,6 @@ class _PublierAnnoncePageState extends State<PublierAnnoncePage>
               ]),
               const SizedBox(height: 30),
               _buildDivider(),
-              // Carburant au-dessus de Boîte de vitesse
               _buildLottieDropdown(
                 animationPath: 'assets/json/fuuel.json',
                 label: "Carburant*",
@@ -1050,20 +1208,16 @@ class _PublierAnnoncePageState extends State<PublierAnnoncePage>
                 onChanged: (val) => setState(() => _boite = val!),
               ),
               const SizedBox(height: 20),
-
               _buildLottieDropdown(
-                animationPath:
-                    'assets/json/carinfo.json', // Remplacez par une animation appropriée si disponible
+                animationPath: 'assets/json/carinfo.json',
                 label: "Condition*",
                 value: _condition,
                 items: const ["Nouveau", "Ancien"],
                 onChanged: (val) => setState(() => _condition = val!),
               ),
               const SizedBox(height: 20),
-
               _buildDivider(),
               _buildOptionsExpansionTile(),
-
               const SizedBox(height: 20),
               _buildNavigationButtons(),
             ],
@@ -1082,29 +1236,57 @@ class _PublierAnnoncePageState extends State<PublierAnnoncePage>
             title: "Finalisation",
             children: [
               const SizedBox(height: 20),
-              _buildAnimatedFormRow([
-                _buildLottieField(
-                  animationPath: 'assets/json/place.json',
-                  label: "Lieu*",
-                  controller: _lieuController,
-                  validator: (value) => value?.isEmpty ?? true
-                      ? 'Ce champ est obligatoire'
-                      : null,
-                ),
-                _buildLottieField(
-                  animationPath: 'assets/json/price.json',
-                  label: "Prix* (FCFA)",
-                  controller: _prixController,
-                  keyboardType: TextInputType.number,
-                  validator: (value) {
-                    if (value?.isEmpty ?? true)
-                      return 'Ce champ est obligatoire';
-                    final price = double.tryParse(value!);
-                    if (price == null || price <= 0) return 'Prix invalide';
-                    return null;
-                  },
-                ),
-              ]),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Champ "Lieu"
+                  Expanded(
+                    child: _buildLottieField(
+                      animationPath: 'assets/json/place.json',
+                      label: "Lieu*",
+                      controller: _lieuController,
+                      validator: (value) => value?.isEmpty ?? true
+                          ? 'Ce champ est obligatoire'
+                          : null,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  // Champ "Prix" + bouton dessous
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        GestureDetector(
+                          onTap: () {
+                            if (!_isPriceFieldEnabled) {
+                              _showPriceDialog(); // Afficher le dialog si le champ est désactivé
+                            }
+                          },
+                          child: AbsorbPointer(
+                            absorbing:
+                                !_isPriceFieldEnabled, // Désactiver ou activer le champ
+                            child: _buildLottieField(
+                              animationPath: 'assets/json/price.json',
+                              label: "Prix* (FCFA)",
+                              controller: _prixController,
+                              keyboardType: TextInputType.number,
+                              validator: (value) {
+                                if (value?.isEmpty ?? true) {
+                                  return 'Ce champ est obligatoire';
+                                }
+                                final price = double.tryParse(value!);
+                                if (price == null || price <= 0)
+                                  return 'Prix invalide';
+                                return null;
+                              },
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
               const SizedBox(height: 20),
               _buildDivider(),
               _buildDescriptionField(),
@@ -1124,7 +1306,6 @@ class _PublierAnnoncePageState extends State<PublierAnnoncePage>
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        // Bouton Retour
         FadeInLeft(
           delay: const Duration(milliseconds: 300),
           child: ElevatedButton(
@@ -1135,21 +1316,19 @@ class _PublierAnnoncePageState extends State<PublierAnnoncePage>
               );
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.grey[300], // Couleur grise
+              backgroundColor: Colors.grey[300],
               padding: const EdgeInsets.all(16),
               shape: const CircleBorder(),
               shadowColor: Colors.grey.withOpacity(0.5),
               elevation: 8,
             ),
             child: const Icon(
-              Icons.arrow_back, // Flèche inversée
+              Icons.arrow_back,
               color: Colors.black87,
               size: 24,
             ),
           ),
         ),
-
-        // Bouton Suivant
         if (_currentPage < 2)
           FadeInRight(
             delay: const Duration(milliseconds: 300),
@@ -1163,14 +1342,14 @@ class _PublierAnnoncePageState extends State<PublierAnnoncePage>
                 }
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: _secondaryColor, // Couleur mauve
+                backgroundColor: _secondaryColor,
                 padding: const EdgeInsets.all(16),
                 shape: const CircleBorder(),
                 shadowColor: _secondaryColor.withOpacity(0.5),
                 elevation: 8,
               ),
               child: const Icon(
-                Icons.arrow_forward, // Flèche vers l'avant
+                Icons.arrow_forward,
                 color: Colors.white,
                 size: 24,
               ),
@@ -1245,19 +1424,14 @@ class _PublierAnnoncePageState extends State<PublierAnnoncePage>
               borderSide: BorderSide(color: _primaryColor, width: 2),
             ),
           ),
-          style: GoogleFonts.poppins(
-              fontSize: 14,
-              color: Colors
-                  .black87), // Police Poppins pour les éléments sélectionnés
+          style: GoogleFonts.poppins(fontSize: 14, color: Colors.black87),
           items: items
               .map((item) => DropdownMenuItem(
                     value: item,
                     child: Text(
                       item,
                       style: GoogleFonts.poppins(
-                          fontSize: 14,
-                          color: Colors
-                              .black87), // Police Poppins pour les options
+                          fontSize: 14, color: Colors.black87),
                     ),
                   ))
               .toList(),
@@ -1335,18 +1509,11 @@ class _PublierAnnoncePageState extends State<PublierAnnoncePage>
               child: TextFormField(
                 controller: _descriptionController,
                 maxLines: 5,
-                style: GoogleFonts.poppins(
-                  // Appliquer la police Poppins au texte saisi
-                  fontSize: 14,
-                  color: Colors.black87,
-                ),
+                style: GoogleFonts.poppins(fontSize: 14, color: Colors.black87),
                 decoration: InputDecoration(
-                  hintText: "Décrivez votre véhicule en détail...",
-                  hintStyle: GoogleFonts.poppins(
-                    // Appliquer la police Poppins au texte d'indice
-                    fontSize: 14,
-                    color: Colors.grey,
-                  ),
+                  hintText: "Décrivez votre véhicule...",
+                  hintStyle:
+                      GoogleFonts.poppins(fontSize: 14, color: Colors.grey),
                   filled: true,
                   fillColor: Colors.white.withOpacity(0.9),
                   border: OutlineInputBorder(
@@ -1375,10 +1542,7 @@ class _PublierAnnoncePageState extends State<PublierAnnoncePage>
         const SizedBox(height: 8),
         Text(
           "Décrivez l'état général, les options, l'historique et toute information utile pour les acheteurs.",
-          style: GoogleFonts.poppins(
-            fontSize: 12,
-            color: Colors.grey,
-          ),
+          style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey),
         ),
       ],
     );
@@ -1399,10 +1563,7 @@ class _PublierAnnoncePageState extends State<PublierAnnoncePage>
         const SizedBox(height: 8),
         Text(
           "Ajoutez une photo de bonne qualité",
-          style: GoogleFonts.poppins(
-            fontSize: 12,
-            color: Colors.grey,
-          ),
+          style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey),
         ),
         const SizedBox(height: 12),
         GestureDetector(
@@ -1419,24 +1580,8 @@ class _PublierAnnoncePageState extends State<PublierAnnoncePage>
                 style: BorderStyle.solid,
               ),
             ),
-            child: _selectedImages.isEmpty
-                ? Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Lottie.asset(
-                        'assets/json/add.json',
-                        height: 80,
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        "Cliquez pour ajouter une photo",
-                        style: GoogleFonts.poppins(
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                    ],
-                  )
-                : Stack(
+            child: _selectedImages.isNotEmpty
+                ? Stack(
                     children: [
                       ClipRRect(
                         borderRadius: BorderRadius.circular(8),
@@ -1451,11 +1596,7 @@ class _PublierAnnoncePageState extends State<PublierAnnoncePage>
                         top: 4,
                         right: 4,
                         child: GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              _selectedImages.clear();
-                            });
-                          },
+                          onTap: () => _removeImage(0),
                           child: Container(
                             padding: const EdgeInsets.all(2),
                             decoration: BoxDecoration(
@@ -1471,7 +1612,67 @@ class _PublierAnnoncePageState extends State<PublierAnnoncePage>
                         ),
                       ),
                     ],
-                  ),
+                  )
+                : _existingImageUrl != null && _existingImageUrl!.isNotEmpty
+                    ? Stack(
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: Image.network(
+                              'http://192.168.0.8:3000/fetchCarImages/$_existingImageUrl',
+                              fit: BoxFit.cover,
+                              width: double.infinity,
+                              height: double.infinity,
+                              errorBuilder: (context, error, stackTrace) =>
+                                  Container(
+                                height: 150,
+                                color: Colors.grey[300],
+                                child: const Center(
+                                  child: Icon(Icons.broken_image,
+                                      size: 50, color: Colors.grey),
+                                ),
+                              ),
+                            ),
+                          ),
+                          Positioned(
+                            top: 4,
+                            right: 4,
+                            child: GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  _existingImageUrl = null;
+                                });
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.all(2),
+                                decoration: BoxDecoration(
+                                  color: Colors.red.withOpacity(0.8),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.close,
+                                  size: 14,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      )
+                    : Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Lottie.asset(
+                            'assets/json/add.json',
+                            height: 80,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            "Cliquez pour ajouter une photo",
+                            style: GoogleFonts.poppins(color: Colors.grey[600]),
+                          ),
+                        ],
+                      ),
           ),
         ),
       ],
@@ -1527,8 +1728,7 @@ class _PublierAnnoncePageState extends State<PublierAnnoncePage>
                       height: 4,
                       width: 80,
                       decoration: BoxDecoration(
-                        color:
-                            _secondaryColor, // Utilisation de la couleur mauve
+                        color: _secondaryColor,
                         borderRadius: BorderRadius.circular(10),
                       ),
                     ),

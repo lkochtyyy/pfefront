@@ -69,6 +69,8 @@ flutter:
     - assets/
     - assets/avatars/
     - assets/json/
+    - assets/logos/
+
 
   fonts:
     - family: SF Pro

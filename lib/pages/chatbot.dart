@@ -93,7 +93,7 @@ class _ChatBotSupportPageState extends State<ChatBotSupportPage> {
                   child: Column(
                     children: [
                       SizedBox(
-                        height: 120,
+                        height: 110,
                         width: 120,
                         child: ClipOval(
                           child: Lottie.asset(

@@ -40,9 +40,205 @@ class _FavorisPageState extends State<FavorisPage> {
     return cars;
   }
 
-  @override
-  void initState() {
-    super.initState();
+  Future<void> _showSortOptions(BuildContext context) async {
+    final List<Map<String, dynamic>> sortOptions = [
+      {"label": "Prix (croissant)", "icon": Icons.arrow_upward},
+      {"label": "Prix (décroissant)", "icon": Icons.arrow_downward},
+      {"label": "Marque A - Z", "icon": Icons.sort_by_alpha},
+      {"label": "Marque Z - A", "icon": Icons.sort_by_alpha_outlined},
+    ];
+
+    String selectedOption = "Prix (croissant)";
+
+    final result = await showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return AnimatedContainer(
+              duration: const Duration(milliseconds: 400),
+              curve: Curves.easeInOut,
+              child: DraggableScrollableSheet(
+                expand: false,
+                initialChildSize: 0.55,
+                maxChildSize: 0.8,
+                minChildSize: 0.4,
+                builder: (context, scrollController) {
+                  return SlideTransition(
+                    position: Tween<Offset>(
+                      begin: const Offset(0, 1),
+                      end: Offset.zero,
+                    ).animate(CurvedAnimation(
+                      parent: ModalRoute.of(context)!.animation!,
+                      curve: Curves.easeOut,
+                    )),
+                    child: FadeTransition(
+                      opacity: CurvedAnimation(
+                        parent: ModalRoute.of(context)!.animation!,
+                        curve: Curves.easeIn,
+                      ),
+                      child: Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.white, // Fond clair élégant
+                          borderRadius: const BorderRadius.vertical(
+                              top: Radius.circular(30)),
+                        ),
+                        child: ListView(
+                          controller: scrollController,
+                          children: [
+                            Center(
+                              child: Container(
+                                width: 50,
+                                height: 5,
+                                margin: const EdgeInsets.only(bottom: 20),
+                                decoration: BoxDecoration(
+                                  color: Colors.grey[300],
+                                  borderRadius: BorderRadius.circular(5),
+                                ),
+                              ),
+                            ),
+                            Center(
+                              child: Text(
+                                "Trier par",
+                                style: GoogleFonts.poppins(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.black87,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                            ...sortOptions.map((option) {
+                              final isSelected =
+                                  selectedOption == option['label'];
+                              return GestureDetector(
+                                onTap: () {
+                                  setModalState(() {
+                                    selectedOption = option['label'];
+                                  });
+                                },
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 300),
+                                  margin:
+                                      const EdgeInsets.symmetric(vertical: 6),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 16, vertical: 14),
+                                  decoration: BoxDecoration(
+                                    color: isSelected
+                                        ? const Color(0xFF50C2C9)
+                                            .withOpacity(0.1)
+                                        : Colors.white,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: isSelected
+                                          ? const Color(0xFF50C2C9)
+                                          : Colors.grey.shade300,
+                                      width: isSelected ? 2 : 1,
+                                    ),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(option['icon'],
+                                          color: isSelected
+                                              ? const Color(0xFF50C2C9)
+                                              : Colors.black54),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Text(
+                                          option['label'],
+                                          style: GoogleFonts.poppins(
+                                            fontSize: 16,
+                                            color: isSelected
+                                                ? Colors.black
+                                                : Colors.black87,
+                                            fontWeight: isSelected
+                                                ? FontWeight.w600
+                                                : FontWeight.normal,
+                                          ),
+                                        ),
+                                      ),
+                                      if (isSelected)
+                                        const Icon(
+                                          Icons.check,
+                                          color: const Color.fromARGB(
+                                              255, 159, 80, 201),
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                            const SizedBox(height: 30),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                              children: [
+                                OutlinedButton(
+                                  onPressed: () => Navigator.pop(context),
+                                  style: OutlinedButton.styleFrom(
+                                    side: const BorderSide(color: Colors.grey),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 30, vertical: 12),
+                                  ),
+                                  child: Text(
+                                    "Annuler",
+                                    style: GoogleFonts.poppins(
+                                      color: Colors.black87,
+                                      fontSize: 15,
+                                    ),
+                                  ),
+                                ),
+                                ElevatedButton(
+                                  onPressed: () {
+                                    Navigator.pop(context, selectedOption);
+                                  },
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor:
+                                        const Color.fromARGB(255, 159, 80, 201),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 30, vertical: 12),
+                                  ),
+                                  child: Text(
+                                    "Appliquer",
+                                    style: GoogleFonts.poppins(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 15,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    if (result != null) {
+      _applySort(result); // Appliquer le tri avec l’option choisie
+    }
+  }
+
+  void _applySort(String selectedOption) {
+    print("Selected sort option: $selectedOption");
+    // Implémentez ici la logique pour trier les favoris
+    // Exemple : Trier la liste des voitures en fonction de l'option sélectionnée
   }
 
   @override
@@ -50,20 +246,34 @@ class _FavorisPageState extends State<FavorisPage> {
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: Text(
-          "My Wishlist",
-          style: GoogleFonts.poppins(
-            color: Colors.black,
-            fontWeight: FontWeight.w600,
-          ),
+        title: Row(
+          children: [
+            Text(
+              "Car Park",
+              style: GoogleFonts.poppins(
+                color: Colors.black,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const Spacer(),
+            GestureDetector(
+              onTap: () {
+                _showSortOptions(context); // Afficher la modal de tri
+              },
+              child: SizedBox(
+                height: 40,
+                width: 40,
+                child: Lottie.asset(
+                  'assets/json/sort.json', // Chemin vers le fichier Lottie
+                  fit: BoxFit.contain,
+                ),
+              ),
+            ),
+          ],
         ),
-        centerTitle: true,
+        centerTitle: false,
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () => Navigator.pop(context),
-        ),
       ),
       body: Container(
         padding: const EdgeInsets.only(top: 100, left: 12, right: 12),
@@ -81,17 +291,12 @@ class _FavorisPageState extends State<FavorisPage> {
         child: BlocBuilder<FavoriBloc, FavoriState>(
           builder: (context, state) {
             if (state is FavoriLoading) {
-              print("Erreur");
               return const Center(child: CircularProgressIndicator());
             } else if (state is FavoriLoaded) {
               final carIds = state.favoris.map((f) => f.carId).toList();
-              print("Favorite car IDs: $carIds");
-
               if (carIds.isEmpty) {
-                print("Erreur");
                 return _buildEmptyWidget();
               }
-
               return FutureBuilder<List<CarAnnouncement>>(
                 future: _loadFavoriteCars(carIds),
                 builder: (context, snapshot) {
@@ -102,28 +307,19 @@ class _FavorisPageState extends State<FavorisPage> {
                   } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
                     return _buildEmptyWidget();
                   }
-
                   final cars = snapshot.data!;
-
-                  return GridView.builder(
+                  return ListView.builder(
                     itemCount: cars.length,
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      crossAxisSpacing: 16,
-                      mainAxisSpacing: 20,
-                      childAspectRatio: 0.72,
-                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
                     itemBuilder: (context, index) {
                       final car = cars[index];
-                      final imageUrl = car.imageUrl;
                       return CarCard(
                         data: {
                           'id': car.id,
                           'title': car.title,
                           'price': car.price,
                           'status': car.carCondition,
-                          'image': imageUrl,
+                          'image': car.imageUrl,
                         },
                         onTap: () {
                           Navigator.push(
@@ -175,7 +371,7 @@ class _FavorisPageState extends State<FavorisPage> {
   BottomNavigationBar _buildBottomNavigationBar(BuildContext context) {
     return BottomNavigationBar(
       backgroundColor: Colors.white,
-      selectedItemColor: const Color(0xFF50C2C9),
+      selectedItemColor: const Color.fromARGB(255, 11, 15, 15),
       unselectedItemColor: Colors.black.withOpacity(0.6),
       showUnselectedLabels: true,
       elevation: 12,
@@ -183,22 +379,50 @@ class _FavorisPageState extends State<FavorisPage> {
       selectedFontSize: 14,
       unselectedFontSize: 12,
       type: BottomNavigationBarType.fixed,
-      currentIndex: 3,
-      items: const [
+      currentIndex: 3, // Index de l'élément sélectionné
+      items: [
         BottomNavigationBarItem(
-          icon: Icon(Icons.directions_car),
-          label: 'Publier',
+          icon: SizedBox(
+            height: 40,
+            width: 40,
+            child: Lottie.asset(
+              'assets/json/publishing.json',
+              fit: BoxFit.contain,
+            ),
+          ),
+          label: 'Vendre',
         ),
         BottomNavigationBarItem(
-          icon: Icon(Icons.home),
+          icon: SizedBox(
+            height: 40,
+            width: 40,
+            child: Lottie.asset(
+              'assets/json/home.json',
+              fit: BoxFit.contain,
+            ),
+          ),
           label: 'Home',
         ),
         BottomNavigationBarItem(
-          icon: Icon(Icons.email_rounded),
+          icon: SizedBox(
+            height: 40,
+            width: 40,
+            child: Lottie.asset(
+              'assets/json/texting.json',
+              fit: BoxFit.contain,
+            ),
+          ),
           label: 'Messagerie',
         ),
         BottomNavigationBarItem(
-          icon: Icon(Icons.stars_rounded),
+          icon: SizedBox(
+            height: 40,
+            width: 40,
+            child: Lottie.asset(
+              'assets/json/parking.json',
+              fit: BoxFit.contain,
+            ),
+          ),
           label: 'Favoris',
         ),
       ],
@@ -216,6 +440,9 @@ class _FavorisPageState extends State<FavorisPage> {
             Navigator.pushReplacement(
                 context, MaterialPageRoute(builder: (_) => const ChatsPage()));
             break;
+          case 3:
+            // Rester sur la page actuelle
+            break;
         }
       },
       selectedLabelStyle:
@@ -230,15 +457,11 @@ class CarCard extends StatelessWidget {
   final Map<String, dynamic> data;
   final VoidCallback? onTap;
 
-  const CarCard({
-    super.key,
-    required this.data,
-    this.onTap,
-  });
+  const CarCard({super.key, required this.data, this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    final image = data['image'] as String;
+    final image = 'http://192.168.0.8:3000/fetchCarImages/${data['image']}';
     final priceFormatted = "\$${data['price'].toString().replaceAllMapped(
           RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
           (m) => '${m[1]},',
@@ -247,134 +470,110 @@ class CarCard extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.all(12),
-        constraints: BoxConstraints(
-          maxWidth:
-              MediaQuery.of(context).size.width * 0.45, // Limit card width
-        ),
+        margin: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(20),
-          boxShadow: const [
+          boxShadow: [
             BoxShadow(
-              color: Colors.black12,
-              blurRadius: 10,
-              offset: Offset(0, 5),
-            )
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 15,
+              offset: const Offset(0, 8),
+            ),
           ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min, // Important to prevent overflow
           children: [
-            // Image container with fixed aspect ratio
-            AspectRatio(
-              aspectRatio: 1.5,
-              child: Hero(
-                tag: 'car-image-${data['id']}',
-                child: Stack(
-                  children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(15),
-                      child: image.startsWith('http')
-                          ? Image.network(
-                              image,
-                              width: double.infinity,
-                              height: double.infinity,
-                              fit: BoxFit.cover,
-                              loadingBuilder:
-                                  (context, child, loadingProgress) {
-                                if (loadingProgress == null) return child;
-                                return Center(
-                                  child: CircularProgressIndicator(
-                                    value: loadingProgress.expectedTotalBytes !=
-                                            null
-                                        ? loadingProgress
-                                                .cumulativeBytesLoaded /
-                                            loadingProgress.expectedTotalBytes!
-                                        : null,
-                                  ),
-                                );
-                              },
-                            )
-                          : Image.asset(
-                              image,
-                              width: double.infinity,
-                              height: double.infinity,
-                              fit: BoxFit.cover,
-                            ),
-                    ),
-                    Positioned(
-                      top: 8,
-                      right: 8,
-                      child: Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.8),
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 10),
-            // Title with max lines
-            Text(
-              data['title'],
-              style: GoogleFonts.poppins(
-                  fontSize: 16, fontWeight: FontWeight.w600),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 6),
-            // Rating and status row
-            Row(
+            Stack(
               children: [
-                const Icon(Icons.star, size: 16, color: Colors.amber),
-                const SizedBox(width: 4),
-                Text(
-                  "4.5",
-                  style: GoogleFonts.poppins(fontSize: 14),
-                ),
-                const SizedBox(width: 6),
-                const Text(
-                  "|",
-                  style: TextStyle(fontSize: 14, color: Colors.grey),
-                ),
-                const SizedBox(width: 9),
-                Flexible(
-                  child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: _getStatusColor(data['status']),
-                      borderRadius: BorderRadius.circular(12),
+                ClipRRect(
+                  borderRadius:
+                      const BorderRadius.vertical(top: Radius.circular(20)),
+                  child: Hero(
+                    tag: 'car_${data['id']}',
+                    child: Image.network(
+                      image,
+                      height: 180,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return Container(
+                          height: 180,
+                          width: double.infinity,
+                          color: Colors.grey.shade200,
+                          child: const Center(
+                            child: CircularProgressIndicator(),
+                          ),
+                        );
+                      },
                     ),
-                    child: Text(
-                      data['status'],
-                      style: GoogleFonts.poppins(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                        color: _getStatusTextColor(data['status']),
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                Positioned(
+                  top: 12,
+                  right: 12,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                    ),
+                    child: IconButton(
+                      icon: const Icon(Icons.favorite_border),
+                      color: Colors.red,
+                      onPressed: () {
+                        // TODO: Add favorite logic
+                      },
                     ),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 10),
-            // Price with better formatting
-            Text(
-              priceFormatted,
-              style: GoogleFonts.poppins(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.green[800]),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+              child: Text(
+                data['title'],
+                style: GoogleFonts.poppins(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w600,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    priceFormatted,
+                    style: GoogleFonts.poppins(
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.green[700],
+                    ),
+                  ),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: _getStatusColor(data['status']),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      data['status'].toString().toUpperCase(),
+                      style: GoogleFonts.poppins(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: _getStatusTextColor(data['status']),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
           ],
         ),
       ),
@@ -384,24 +583,24 @@ class CarCard extends StatelessWidget {
   Color _getStatusColor(String status) {
     switch (status.toLowerCase()) {
       case 'new':
-        return Colors.blue.shade100;
+        return Colors.blue.shade50;
       case 'used':
-        return Colors.grey.shade300;
+        return Colors.orange.shade50;
       case 'certified':
-        return Colors.green.shade100;
+        return Colors.green.shade50;
       default:
-        return Colors.grey.shade300;
+        return Colors.grey.shade200;
     }
   }
 
   Color _getStatusTextColor(String status) {
     switch (status.toLowerCase()) {
       case 'new':
-        return Colors.blue.shade800;
+        return Colors.blue.shade700;
       case 'used':
-        return Colors.black87;
+        return Colors.orange.shade700;
       case 'certified':
-        return Colors.green.shade800;
+        return Colors.green.shade700;
       default:
         return Colors.black87;
     }

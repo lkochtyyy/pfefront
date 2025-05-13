@@ -163,7 +163,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     style: GoogleFonts.poppins(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
-                      color: const Color(0xFF50C2C9),
+                      color: const Color.fromARGB(255, 1, 8, 8),
                     ),
                   ),
                 ),

@@ -1,23 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lottie/lottie.dart';
-import 'package:pfefront/pages/add.dart';
-
 
 class ChatsPage extends StatefulWidget {
   const ChatsPage({super.key});
-
 
   @override
   State<ChatsPage> createState() => _ChatsPageState();
 }
 
-
 class _ChatsPageState extends State<ChatsPage> {
   final List<String> messages = const []; // simule une liste vide
   bool _isSearching = false;
   final TextEditingController _searchController = TextEditingController();
-
 
   @override
   Widget build(BuildContext context) {
@@ -78,36 +73,11 @@ class _ChatsPageState extends State<ChatsPage> {
             ),
           ),
 
-
           // -------- FloatingActionButton animé avec Lottie --------
-          Positioned(
-            bottom: 1.0, // Distance du bas de l'écran
-            right: 1.0, // Distance du côté droit de l'écran
-            child: GestureDetector(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (context) => const AddContactApp()),
-                );
-              },
-              child: SizedBox(
-                width: 150, // Ajuste la taille de l'animation
-                height: 150,
-                child: Lottie.asset(
-                  'assets/json/text.json',
-                  fit: BoxFit.contain,
-                  repeat:
-                      true, // ou false si tu veux juste une animation une seule fois
-                ),
-              ),
-            ),
-          ),
         ],
       ),
     );
   }
-
 
   Widget _buildAnimatedAppBar() {
     return AnimatedSwitcher(
@@ -120,7 +90,6 @@ class _ChatsPageState extends State<ChatsPage> {
       child: _isSearching ? _buildSearchField() : _buildTitleBar(),
     );
   }
-
 
   Widget _buildTitleBar() {
     return AppBar(
@@ -148,7 +117,6 @@ class _ChatsPageState extends State<ChatsPage> {
       ],
     );
   }
-
 
   Widget _buildSearchField() {
     return AppBar(
@@ -183,7 +151,6 @@ class _ChatsPageState extends State<ChatsPage> {
     );
   }
 
-
   Widget _buildChatItem(BuildContext context, int index) {
     return Column(
       children: [
@@ -200,12 +167,6 @@ class _ChatsPageState extends State<ChatsPage> {
             'Last message preview...',
             style: GoogleFonts.poppins(),
           ),
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const AddContactApp()),
-            );
-          },
         ),
         const Divider(thickness: 0.5, indent: 16, endIndent: 16),
       ],
